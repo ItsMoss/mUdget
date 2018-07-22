@@ -13,11 +13,13 @@ mudget::mudget(QWidget *parent)
 	create_income_category();
 	tempIncome = 0;
 	clean_up_ui();
+	init_database();
 
 	// signal slot connections
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(save()));
 	connect(ui.actionCalculations, SIGNAL(triggered()), this, SLOT(setCalculationSettings()));
 	connect(ui.actionCategories, SIGNAL(triggered()), this, SLOT(setCategories()));
+	connect(ui.actionDatabase, SIGNAL(triggered()), this, SLOT(openDatabaseWindow()));
 	connect(ui.monthComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 	connect(ui.yearComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 
@@ -44,9 +46,10 @@ mudget::~mudget() {
 void mudget::addMudgetCategory() {
 	INFO("new category added");
 	expenses.push_back(new mudgetCategory(categoryMap));
-	ui.centralWidget->layout()->replaceWidget(static_cast<QWidget*>(QObject::sender()), expenses.back());
+	ui.mainLayout->replaceWidget(static_cast<QWidget*>(QObject::sender()), expenses.back());
 	static_cast<QWidget*>(QObject::sender())->hide();
 	connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
+	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString)));
 }
 
 
@@ -177,6 +180,35 @@ void mudget::load(QString openFName) {
 			INFO("loading was successful");
 			display_message("Loading was successful.");
 		}
+	}
+}
+
+
+void mudget::openDatabaseWindow() {
+	INFO("user clicked to open database");
+	if (dbAvailable) {
+		dbView = 0;
+		dbView = std::make_unique<QTableView>();
+		dbView->setWindowTitle("Database");
+		dbView->setStyleSheet(styleSheet());
+		dbModel = 0;
+		dbModel = std::make_unique<QSqlRelationalTableModel>();
+		dbModel->setTable("THIS_WEEK");
+		dbModel->select();
+		if (dbModel->lastError().isValid()) {
+			ERROR("unable to open db window due to: " + dbModel->lastError().text().toStdString());
+			display_message("Error: " + dbModel->lastError().text());
+			return;
+		}
+		else {
+			dbView->setModel(dbModel.get());
+			dbView->show();
+			dbView->setMinimumSize(800, 400);
+		}
+	}
+	else {
+		INFO("but db is unavilable right now");
+		display_message("Database is not available");
 	}
 }
 
@@ -401,9 +433,34 @@ void mudget::performWantedCalculation() {
 	delete_temp();
 }
 
+void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QString t) {
+	DEBUG("received record: " + exp.toStdString() + " " + std::to_string(amount) 
+		+ " " + cat.toStdString() + " " + t.toStdString());
+
+	if (dbAvailable) {
+		QSqlQuery query;
+		QString apo("'");
+		QString insert("INSERT OR IGNORE INTO THIS_WEEK (EXPENSE, AMOUNT, CATEGORY, ITEMNUMBER, TIMESTAMP) ");
+		insert += "VALUES (" + apo + exp + "', " + std::to_string(amount).c_str() + ", " + apo + cat + "', " + std::to_string(n).c_str() + ", " + apo + t + "');";
+		query.exec(insert);
+		if (query.isActive()) {
+			DEBUG("successfully inserted record");
+			if (dbModel) {
+				// update db model
+				dbModel->select();
+			}
+		}
+		else {
+			WARN("failed to insert record due to: " + query.lastError().text().toStdString());
+		}
+	}
+	else {
+		INFO("but database is not available");
+	}
+}
 
 void mudget::save() {
-	INFO("saving the following fiel...");
+	INFO("saving the following file...");
 	// create folder (if does not exist)
 	if (!QDir(SAVE_LOAD_DIRECTORY).exists()) {
 		QDir().mkdir(SAVE_LOAD_DIRECTORY);
@@ -626,6 +683,7 @@ void mudget::updateIncome() {
 
 void mudget::closeEvent(QCloseEvent * qce) {
 	auto_save_settings();
+	dbAvailable = false;
 }
 
 
@@ -763,7 +821,7 @@ void mudget::clean_up_ui() {
 
 void mudget::create_income_category() {
 	uiIncome = new mudgetCategory("Income", categoryMap);
-	ui.centralWidget->layout()->replaceWidget(ui.addCategory2, uiIncome);
+	ui.mainLayout->replaceWidget(ui.addCategory2, uiIncome);
 	ui.addCategory2->hide();
 	connect(uiIncome, SIGNAL(updateExpenses()), this, SLOT(updateIncome()));
 }
@@ -786,8 +844,8 @@ void mudget::delete_all() {
 	int b = 0;
 	for (auto exp : expenses) {
 		buttons[b]->show();
-		ui.centralWidget->layout()->replaceWidget(exp, buttons[b++]);
-		ui.centralWidget->layout()->setAlignment(buttons[b - 1], Qt::AlignHCenter);
+		ui.mainLayout->replaceWidget(exp, buttons[b++]);
+		ui.mainLayout->setAlignment(buttons[b - 1], Qt::AlignHCenter);
 		delete exp;
 	}
 	expenses.clear();
@@ -826,6 +884,78 @@ void mudget::find_matching_expenses(std::vector<mudgetCategory*> & matches, QStr
 }
 
 
+void mudget::init_database() {
+	INFO("initializing database");
+	dbAvailable = false;
+	dbModel = 0;
+	dbView = 0;
+	
+	db = std::make_unique<QSqlDatabase>(QSqlDatabase::addDatabase("QSQLITE"));
+	
+	// check that database is valid o/w using whatever driver i can
+	if (!db->isValid()) {
+		QStringList driversList = db->drivers();
+		for (auto d : driversList) {
+			if (d == "QOCI" || d == "QODBC") {
+				// do not want to use Oracle or Microsoft Access drivers
+				continue;
+			}
+			db = std::make_unique<QSqlDatabase>(QSqlDatabase::addDatabase(d));
+			if (db->isValid()) {
+				break;
+			}
+		}
+		if (!db->isValid()) {
+			WARN("unable to find suitable driver to establish db connection");
+			display_message("Warning - unable to establish database connection due to no suitable drivers");
+			return;
+		}
+	}
+	std::string driverStr("using db driver: ");
+	driverStr += db->driverName().toStdString();
+	DEBUG(driverStr);
+	
+	// connect
+	db->setHostName("localhost");		// does not matter for sqlite
+	QString dbName(SAVE_LOAD_DIRECTORY);
+	dbName += DATABASE_FILE_NAME;
+	db->setDatabaseName(dbName);
+	if (db->open()) {
+		DEBUG("successfully connected to database");
+	}
+	else {
+		WARN("unable to open database");
+		display_message("Warning - Unable to open database");
+		return;
+	}
+
+	// create table if it does not exist
+	if (db->record("THIS_WEEK").isEmpty()) {
+		QSqlQuery query;
+		query.exec("CREATE TABLE THIS_WEEK (\
+					ID			INTEGER	PRIMARY KEY		AUTOINCREMENT, \
+					EXPENSE		TEXT	NOT NULL, \
+					AMOUNT		MONEY	NOT NULL, \
+					CATEGORY	TEXT	NOT NULL, \
+					ITEMNUMBER	INTEGER	NOT NULL, \
+					TIMESTAMP	TEXT	NOT NULL, \
+					UNIQUE(EXPENSE, CATEGORY, ITEMNUMBER) \
+					);");
+		if (!query.isActive()) {
+			ERROR("unable to create db table THIS_WEEK due to: " + query.lastError().text().toStdString());
+			return;
+		}
+		INFO("created db table THIS_WEEK");
+	}
+	else {
+		INFO("db table THIS_WEEK already exists");
+	}
+
+	DEBUG("successful db initialization!");
+	dbAvailable = true;
+}
+
+
 void mudget::init_month_year_maps() {
 	INFO("initializing month year maps");
 	// months
@@ -853,7 +983,7 @@ void mudget::init_month_year_maps() {
 
 
 bool mudget::load_settings() {
-	INFO("loading setttings");
+	INFO("loading settings");
 	// try to find settings file
 	std::string fname = SAVE_LOAD_DIRECTORY;
 	fname += SETTINGS_FILE_NAME;

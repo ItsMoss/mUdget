@@ -54,6 +54,9 @@
     <QtMoc Include="..\source\mudgetcategory.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="..\source\goal.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\source\expenseitem.cpp">
@@ -69,6 +72,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\mudgetcategory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\goal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

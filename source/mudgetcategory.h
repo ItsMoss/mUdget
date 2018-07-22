@@ -9,6 +9,7 @@
 #include <qlineedit.h>
 #include <qobject.h>
 #include <string>
+#include <time.h>
 #include <vector>
 
 class mudgetCategory : public QFrame {
@@ -20,6 +21,7 @@ class mudgetCategory : public QFrame {
 	QGridLayout itemLayout;				// layout of expense line items
 	double total;						// total amount expenses
 	std::vector<expenseItem> lineItems;	// all the expenses by name, value pair
+	bool loading;						// are line items currently being loaded
 
 	public:	// methods
 		mudgetCategory(std::map<int, QString> & map, bool showIt=true);
@@ -32,16 +34,17 @@ class mudgetCategory : public QFrame {
 		double get_total() const;
 		bool load(QFile & f);
 		void reset();
-		std::string save() const;
+		std::string save();
 		void update_category();
 	
 	public slots:
+		void createRecord(int itemNumber=-1);
 		void updateTotal();
 	
 	private:
-		void init_category_map();
 		std::string remove_newline(std::string & str);
 	signals:
+		void sendRecord(QString, double, QString, int, QString);
 		void updateExpenses();
 
 };

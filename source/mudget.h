@@ -1,6 +1,12 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
+#include <QtWidgets/QTableView>
+#include <QtSql/QSQLDatabase>
+#include <QtSql/QSqlError>
+#include <QtSql/QSQLQuery>
+#include <QtSql/QSQLRecord>
+#include <QtSql/QSQLRelationalTableModel>
 #include <memory>
 #include <qcheckbox.h>
 #include <qdebug.h>
@@ -15,17 +21,20 @@
 #include <string>
 #include "ui_mudget.h"
 #include "mudgetcategory.h"
+#include "goal.h"
 #include "logger.h"
 
 #define SAVE_LOAD_DIRECTORY "./moneyfiles/"
 #define MOSS_FILE_EXT		".moss"
 #define SETTINGS_FILE_NAME	"settings.mxt"
+#define DATABASE_FILE_NAME	"thevault.db"
 
 class mudget : public QMainWindow
 {
 	Q_OBJECT
 
 	Ui::mudgetClass ui;
+	// main tab
 	mudgetCategory* uiIncome;
 	std::vector<mudgetCategory*> expenses;
 	std::vector<mudgetCategory*> tempExpenses;
@@ -38,6 +47,13 @@ class mudget : public QMainWindow
 	std::map<QString, bool> categoryCalculateMap;
 	QTimer* loadTimer;
 	bool skipSlot;
+	// goals tab
+	std::vector<Goal *> goals;
+	// database
+	std::unique_ptr<QSqlDatabase> db;
+	bool dbAvailable;
+	std::unique_ptr<QTableView> dbView;
+	std::unique_ptr<QSqlRelationalTableModel> dbModel;
 
 public:
 	mudget(QWidget *parent = Q_NULLPTR);
@@ -46,7 +62,9 @@ public:
 public slots:
 	void addMudgetCategory();
 	void load(QString openFName = "");
+	void openDatabaseWindow();
 	void performWantedCalculation();
+	void receiveRecord(QString exp, double amount, QString cat, int n, QString t);
 	void save();
 	void setCalculationSettings();
 	void setCategories();
@@ -68,6 +86,7 @@ private:
 	void delete_temp();
 	int display_message(const QString & msg, bool question = false);
 	void find_matching_expenses(std::vector<mudgetCategory*> & matches, QString catname, bool temp=true);
+	void init_database();
 	void init_month_year_maps();
 	bool load_settings();
 	std::string remove_newline(std::string & str);
