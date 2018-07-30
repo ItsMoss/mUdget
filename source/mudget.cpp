@@ -5,6 +5,10 @@ mudget::mudget(QWidget *parent)
 {
 	ui.setupUi(this);
 	// bootup initializations
+	// create folder (if does not exist)
+	if (!QDir(SAVE_LOAD_DIRECTORY).exists()) {
+		QDir().mkdir(SAVE_LOAD_DIRECTORY);
+	}
 	init_month_year_maps();		// must init months before loading settings right now!
 	load_settings();
 	skipSlot = true;
@@ -776,10 +780,6 @@ mudgetCategory * mudget::add_first_available_expense_category() {
 
 bool mudget::auto_save_settings() {
 	INFO("auto saving settings");
-	// create folder (if does not exist)
-	if (!QDir(SAVE_LOAD_DIRECTORY).exists()) {
-		QDir().mkdir(SAVE_LOAD_DIRECTORY);
-	}
 	// create filename based off month, year user set
 	std::string fname = SAVE_LOAD_DIRECTORY;
 	fname += SETTINGS_FILE_NAME;
