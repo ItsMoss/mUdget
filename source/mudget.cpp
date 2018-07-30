@@ -35,6 +35,7 @@ mudget::mudget(QWidget *parent)
 
 
 mudget::~mudget() {
+	clear_goals();
 	delete_all();
 	if (loadTimer) {
 		delete loadTimer;
@@ -50,6 +51,43 @@ void mudget::addMudgetCategory() {
 	static_cast<QWidget*>(QObject::sender())->hide();
 	connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
 	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString)));
+}
+
+
+void mudget::calculateGoalProgress() {
+	static int count = 0;
+	if (goals.size()) {
+		Goal * goal2calculate = goals[(count % goals.size())];
+		update_goal_progress(goal2calculate);
+		++count;
+	}
+	else {
+		count = 0;
+		ui.goalProgressLabel->hide();
+	}
+}
+
+
+void mudget::createGoals() {
+	INFO("creating goals. yayyyy!");
+	if (QObject::sender() == ui.createGoalButton) {
+		DEBUG("for the first time too...");
+		ui.createGoalButton->hide();
+	}
+	else {
+		int resp = display_message("Would you like to set this goal?", true);
+		if (resp == QMessageBox::Yes) {
+			DEBUG("new goal set");
+			display_message("New goal successfully set!");
+			goals.back()->setLock(true);
+		}
+		else {
+			return;
+		}
+	}
+	goals.push_back(new Goal(categoryMap));
+	ui.goalsVerticalLayout->addWidget(goals.back());
+	connect(goals.back(), SIGNAL(broadcast()), this, SLOT(createGoals()));
 }
 
 
@@ -240,7 +278,7 @@ void mudget::performWantedCalculation() {
 		}
 		else if (k >= 3 && k < 6) {		// expenses
 			INFO("expenses this month");
-			ui.resultSpinBox->setValue(-calculate_expenses(false));
+			ui.resultSpinBox->setValue(calculate_expenses(false));
 		}
 		else if (k >= 6) {	// categories
 			k = (k - 6) / 3;
@@ -684,6 +722,8 @@ void mudget::updateIncome() {
 void mudget::closeEvent(QCloseEvent * qce) {
 	auto_save_settings();
 	dbAvailable = false;
+	dbModel = 0;
+	dbView = 0;
 }
 
 
@@ -750,6 +790,7 @@ bool mudget::auto_save_settings() {
 	const std::string calculateMonths("Calculate-Months\n");
 	const std::string calculateCategories("Calculate-Categories\n");
 	const std::string currentMonth("Current Month\n");
+	const std::string goalsStr("Goals\n");
 	file2save.open(QIODevice::WriteOnly);
 	// Categories
 	file2save.write(categories.c_str());
@@ -790,6 +831,13 @@ bool mudget::auto_save_settings() {
 	file2save.write(moStr.c_str());
 	file2save.write(ui.yearLineEdit->text().toStdString().c_str());
 	file2save.write("\n");
+	// Goals
+	file2save.write("\n");
+	file2save.write(goalsStr.c_str());
+	for (auto & g : goals) {
+		file2save.write(g->save().c_str());
+	}
+	file2save.write("\n");
 	file2save.close();
 	return true;
 }
@@ -816,6 +864,18 @@ double mudget::calculate_income(bool temp) const {
 
 
 void mudget::clean_up_ui() {
+}
+
+
+void mudget::clear_goals() {
+	INFO("clearing current goals");
+	for (auto & g : goals) {
+		if (g) {
+			delete g;
+		}
+	}
+	goals.clear();
+	ui.createGoalButton->show();
 }
 
 
@@ -1014,6 +1074,7 @@ bool mudget::load_settings() {
 		const std::string calculateMonths("Calculate-Months");
 		const std::string calculateCategories("Calculate-Categories");
 		const std::string currentMonth("Current Month");
+		const std::string goalsStr("Goals");
 		file2load.open(QIODevice::ReadOnly);
 		std::string line;
 		line = remove_newline(file2load.readLine().toStdString());
@@ -1104,7 +1165,41 @@ bool mudget::load_settings() {
 		if (currMo) {
 			ui.monthComboBox->setCurrentIndex(currMo - 1);
 		}
-
+		// Goals
+		clear_goals();
+		line = remove_newline(file2load.readLine().toStdString());
+		while (line == "" && !file2load.atEnd()) {
+			line = remove_newline(file2load.readLine().toStdString());
+		}
+		if (line != goalsStr) {
+			ERROR("loading settings failed - expected line: Goals");
+			display_message("Error loading settings file - expected Goals");
+			file2load.close();
+			return false;
+		}
+		while (true) {
+			line = remove_newline(file2load.readLine().toStdString());
+			if (line == "" || file2load.atEnd()) {
+				break;
+			}
+			goals.push_back(new Goal(categoryMap));
+			if (!goals.back()->load(line)) {
+				WARN("error loading goal: " + line);
+				QString warnmsg("Warning: Unable to load the following goal: ");
+				display_message(warnmsg + line.c_str());
+				delete goals.back();
+				goals.pop_back();
+				continue;
+			}
+			ui.createGoalButton->hide();
+			ui.goalsVerticalLayout->addWidget(goals.back());
+			goals.back()->setLock(true);
+		}
+		if (ui.createGoalButton->isHidden()) {
+			goals.push_back(new Goal(categoryMap));
+			ui.goalsVerticalLayout->addWidget(goals.back());
+			connect(goals.back(), SIGNAL(broadcast()), this, SLOT(createGoals()));
+		}
 		file2load.close();
 	}
 
@@ -1167,6 +1262,11 @@ void mudget::update_category_calculations() {
 			categoryCalculateMap.erase(it->first);
 		}
 	}
+}
+
+
+void mudget::update_goal_progress(Goal * g) {
+
 }
 
 

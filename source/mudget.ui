@@ -93,6 +93,18 @@ QFrame#mossHub{
 border: 3px solid rgb(100, 100, 100);
 }
 
+QFrame#goalsFrame{
+border: 3px solid rgb(100, 100, 100);
+}
+
+QFrame#progressFrame{
+border: 3px solid rgb(100, 100, 100);
+}
+
+QFrame#displayCaseFrame{
+border: 3px solid rgb(100, 100, 100);
+}
+
 QLabel{
 font: bold;
 color: rgb(255, 255, 255);
@@ -636,7 +648,7 @@ color: rgb(0,0,0);
               </property>
               <layout class="QGridLayout" name="gridLayout_4">
                <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-                <widget class="QLabel" name="label_2">
+                <widget class="QLabel" name="goalProgressLabel">
                  <property name="text">
                   <string>Progress of goals will show here...</string>
                  </property>
@@ -655,7 +667,7 @@ color: rgb(0,0,0);
               </property>
               <layout class="QGridLayout" name="gridLayout_6">
                <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-                <widget class="QLabel" name="label_3">
+                <widget class="QLabel" name="goalDisplayLabel">
                  <property name="text">
                   <string>Under construction :)</string>
                  </property>
@@ -674,7 +686,10 @@ color: rgb(0,0,0);
             <property name="frameShadow">
              <enum>QFrame::Raised</enum>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_3">
+            <property name="lineWidth">
+             <number>1</number>
+            </property>
+            <layout class="QVBoxLayout" name="goalsVerticalLayout">
              <item alignment="Qt::AlignHCenter">
               <widget class="QPushButton" name="createGoalButton">
                <property name="text">
@@ -778,8 +793,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>42</x>
-     <y>174</y>
+     <x>50</x>
+     <y>199</y>
     </hint>
     <hint type="destinationlabel">
      <x>17</x>
@@ -794,8 +809,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>111</x>
-     <y>174</y>
+     <x>137</x>
+     <y>199</y>
     </hint>
     <hint type="destinationlabel">
      <x>95</x>
@@ -810,8 +825,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>284</x>
-     <y>174</y>
+     <x>330</x>
+     <y>199</y>
     </hint>
     <hint type="destinationlabel">
      <x>297</x>
@@ -826,8 +841,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>505</x>
-     <y>174</y>
+     <x>567</x>
+     <y>199</y>
     </hint>
     <hint type="destinationlabel">
      <x>472</x>
@@ -842,8 +857,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>569</x>
-     <y>174</y>
+     <x>631</x>
+     <y>199</y>
     </hint>
     <hint type="destinationlabel">
      <x>537</x>
@@ -858,8 +873,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>46</x>
-     <y>269</y>
+     <x>54</x>
+     <y>294</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -874,8 +889,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>110</x>
-     <y>269</y>
+     <x>137</x>
+     <y>294</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -890,8 +905,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>505</x>
-     <y>269</y>
+     <x>567</x>
+     <y>294</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -906,8 +921,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>569</x>
-     <y>269</y>
+     <x>631</x>
+     <y>294</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -922,8 +937,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>46</x>
-     <y>365</y>
+     <x>54</x>
+     <y>389</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -938,8 +953,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>110</x>
-     <y>365</y>
+     <x>137</x>
+     <y>389</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -954,8 +969,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>298</x>
-     <y>365</y>
+     <x>330</x>
+     <y>389</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -970,8 +985,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>569</x>
-     <y>365</y>
+     <x>631</x>
+     <y>389</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -986,8 +1001,8 @@ color: rgb(0,0,0);
    <slot>addMudgetCategory()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>505</x>
-     <y>365</y>
+     <x>567</x>
+     <y>389</y>
     </hint>
     <hint type="destinationlabel">
      <x>299</x>
@@ -1002,12 +1017,28 @@ color: rgb(0,0,0);
    <slot>performWantedCalculation()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>179</x>
-     <y>329</y>
+     <x>213</x>
+     <y>353</y>
     </hint>
     <hint type="destinationlabel">
      <x>182</x>
      <y>379</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>createGoalButton</sender>
+   <signal>clicked()</signal>
+   <receiver>mudgetClass</receiver>
+   <slot>createGoals()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>181</x>
+     <y>237</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>165</x>
+     <y>404</y>
     </hint>
    </hints>
   </connection>
@@ -1017,5 +1048,6 @@ color: rgb(0,0,0);
   <slot>addMudgetCategory()</slot>
   <slot>updateCurrentMonthYear(int)</slot>
   <slot>performWantedCalculation()</slot>
+  <slot>createGoals()</slot>
  </slots>
 </ui>

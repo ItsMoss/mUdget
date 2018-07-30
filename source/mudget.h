@@ -61,6 +61,8 @@ public:
 
 public slots:
 	void addMudgetCategory();
+	void calculateGoalProgress();
+	void createGoals();
 	void load(QString openFName = "");
 	void openDatabaseWindow();
 	void performWantedCalculation();
@@ -81,6 +83,7 @@ private:
 	double calculate_expenses(bool temp=true, bool calcAll=false);
 	double calculate_income(bool temp=true) const;
 	void clean_up_ui();
+	void clear_goals();
 	void create_income_category();
 	void delete_all();
 	void delete_temp();
@@ -93,5 +96,6 @@ private:
 	void update_calculation_combo();
 	void update_categories();
 	void update_category_calculations();
+	void update_goal_progress(Goal * g);
 	void update_profit();
 };
