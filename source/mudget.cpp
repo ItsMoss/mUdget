@@ -33,6 +33,8 @@ mudget::mudget(QWidget *parent)
 	connect(loadTimer, SIGNAL(timeout()), this, SLOT(load()));
 	loadTimer->start(1000);
 
+	goalTimer = 0;
+
 	skipSlot = false;
 	INFO("mUdget constructed");
 }
@@ -67,7 +69,7 @@ void mudget::calculateGoalProgress() {
 	}
 	else {
 		count = 0;
-		ui.goalProgressLabel->hide();
+		ui.goalProgressLabel->show();
 	}
 }
 
@@ -482,7 +484,7 @@ void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QStri
 	if (dbAvailable) {
 		QSqlQuery query;
 		QString apo("'");
-		QString insert("INSERT OR IGNORE INTO THIS_WEEK (EXPENSE, AMOUNT, CATEGORY, ITEMNUMBER, TIMESTAMP) ");
+		QString insert("INSERT OR REPLACE INTO THIS_WEEK (EXPENSE, AMOUNT, CATEGORY, ITEMNUMBER, TIMESTAMP) ");
 		insert += "VALUES (" + apo + exp + "', " + std::to_string(amount).c_str() + ", " + apo + cat + "', " + std::to_string(n).c_str() + ", " + apo + t + "');";
 		query.exec(insert);
 		if (query.isActive()) {
@@ -1266,6 +1268,55 @@ void mudget::update_category_calculations() {
 
 
 void mudget::update_goal_progress(Goal * g) {
+	// convert goal to its number counterpart via indexes/values
+	int needi = g->getNeedIndex();
+	int amounti = g->getAmount();
+	int categoryi = g->getCategoryIndex();
+	int timei = g->getTimeIndex();
+
+	// get current timestamp
+	time_t t;
+	time(&t);
+	QString tstamp(ctime(&t));
+	// only care about the day of week, month, day of month and year
+	// Ex: Sat_Jul_21_2018
+	QString year = tstamp.mid(tstamp.length() - 5, 4);
+	tstamp = tstamp.left(11);	// captures day of week, month, and day of month
+	tstamp += year;
+
+	// hide the placeholder label
+	ui.goalProgressLabel->hide();
+
+	// update based on time index
+	if (timei == 1) {
+		// weekly - uses database
+		update_weekly_goal(needi, amounti, categoryi, tstamp);
+	}
+	else if (timei == 2) {
+		// monthly - uses corresponding file if saved
+		update_monthly_goal(needi, amounti, categoryi, tstamp);
+	}
+	else if (timei == 3) {
+		// yearly - uses all saved corresponding files
+		update_yearly_goal(needi, amounti, categoryi, tstamp);
+	}
+	else {
+		WARN("tried to update the progress of a goal with invalid time index");
+	}
+}
+
+
+void mudget::update_monthly_goal(int needidx, int amountidx, int categoryidx, QString tstamp) {
+
+}
+
+
+void mudget::update_weekly_goal(int needidx, int amountidx, int categoryidx, QString tstamp) {
+
+}
+
+
+void mudget::update_yearly_goal(int needidx, int amountidx, int categoryidx, QString tstamp) {
 
 }
 

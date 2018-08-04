@@ -26,6 +26,14 @@ public:
 	Goal(std::map<int, QString> & map);
 	Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat, int timeIndex);
 	~Goal();
+	QString getNeedText() const;
+	int getNeedIndex() const;
+	QString getAmountStr() const;
+	int getAmount() const;
+	QString getCategoryText() const;
+	int getCategoryIndex() const;
+	QString getTimeText() const;
+	int getTimeIndex() const;
 	bool load(std::string line);
 	std::string save();
 	void setLock(bool lck);

@@ -69,6 +69,38 @@ Goal::~Goal() {
 
 }
 
+QString Goal::getNeedText() const {
+	need.currentText();
+}
+
+int Goal::getNeedIndex() const {
+	need.currentIndex();
+}
+
+QString Goal::getAmountStr() const {
+	amount.text();
+}
+
+int Goal::getAmount() const {
+	return amount.value();
+}
+
+QString Goal::getCategoryText() const {
+	return category.currentText();
+}
+
+int Goal::getCategoryIndex() const {
+	return category.currentIndex();
+}
+
+QString Goal::getTimeText() const {
+	return time.currentText();
+}
+
+int Goal::getTimeIndex() const {
+	return time.currentIndex();
+}
+
 bool Goal::load(std::string line) {
 	bool success;
 	// "I need to "

@@ -49,6 +49,7 @@ class mudget : public QMainWindow
 	bool skipSlot;
 	// goals tab
 	std::vector<Goal *> goals;
+	QTimer* goalTimer;
 	// database
 	std::unique_ptr<QSqlDatabase> db;
 	bool dbAvailable;
@@ -97,5 +98,8 @@ private:
 	void update_categories();
 	void update_category_calculations();
 	void update_goal_progress(Goal * g);
+	void update_monthly_goal(int needidx, int amountidx, int categoryidx, QString tstamp);
+	void update_weekly_goal(int needidx, int amountidx, int categoryidx, QString tstamp);
+	void update_yearly_goal(int needidx, int amountidx, int categoryidx, QString tstamp);
 	void update_profit();
 };
