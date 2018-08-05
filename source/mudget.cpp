@@ -914,6 +914,62 @@ void mudget::delete_all() {
 	delete_temp();
 }
 
+bool mudget::delete_old_db_records() {
+	// weeks span from Mon-Sun here
+	QString t(melpers::getCurrentTime().c_str());
+	// t is formatted as Day_mm_dd_yyy
+	int nDays;
+	if (t.contains("Sun")) {
+		nDays = 7;
+	}
+	else if (t.contains("Sat")) {
+		nDays = 6;
+	}
+	else if (t.contains("Fri")) {
+		nDays = 5;
+	}
+	else if (t.contains("Thu")) {
+		nDays = 4;
+	}
+	else if (t.contains("Wed")) {
+		nDays = 3;
+	}
+	else if (t.contains("Tue")) {
+		nDays = 2;
+	}
+	else {	// "Mon"
+		nDays = 1;
+	}
+	QStringList daysThisWeek;
+	for (int n = 0; n < nDays; ++n) {
+		daysThisWeek << melpers::getCurrentTime(-n).c_str();
+	}
+
+	// delete all records that do not have timestamp within daysThisWeek
+	QSqlQuery query;
+	QString apo("'");
+	QString del("DELETE FROM THIS_WEEK WHERE TIMESTAMP NOT IN (");
+	for (auto d : daysThisWeek) {
+		del += apo + d + apo + ", ";
+	}
+	del.lastIndexOf(", ");
+	del.replace(del.lastIndexOf(", "), 2, ')');	// end in paranthesis instead of comma!
+	query.exec(del);
+	if (query.isActive()) {
+		DEBUG("successfully deleted old record(s)");
+		if (dbModel) {
+			// update db model
+			dbModel->select();
+		}
+	}
+	else {
+		WARN("failed to delete record(s) due to: " + query.lastError().text().toStdString());
+		return false;
+	}
+
+	return true;
+}
+
 void mudget::delete_temp() {
 	for (auto exp : tempExpenses) {
 		delete exp;
@@ -1013,8 +1069,15 @@ void mudget::init_database() {
 		INFO("db table THIS_WEEK already exists");
 	}
 
-	DEBUG("successful db initialization!");
 	dbAvailable = true;
+
+	if (!delete_old_db_records()) {
+		ERROR("deleting old db records failed");
+		display_message("Failed to delete db record(s)");
+		return;
+	}
+
+	DEBUG("successful db initialization!");
 }
 
 
@@ -1275,14 +1338,7 @@ void mudget::update_goal_progress(Goal * g) {
 	int timei = g->getTimeIndex();
 
 	// get current timestamp
-	time_t t;
-	time(&t);
-	QString tstamp(ctime(&t));
-	// only care about the day of week, month, day of month and year
-	// Ex: Sat_Jul_21_2018
-	QString year = tstamp.mid(tstamp.length() - 5, 4);
-	tstamp = tstamp.left(11);	// captures day of week, month, and day of month
-	tstamp += year;
+	QString tstamp(melpers::getCurrentTime().c_str());
 
 	// hide the placeholder label
 	ui.goalProgressLabel->hide();

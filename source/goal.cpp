@@ -70,15 +70,15 @@ Goal::~Goal() {
 }
 
 QString Goal::getNeedText() const {
-	need.currentText();
+	return need.currentText();
 }
 
 int Goal::getNeedIndex() const {
-	need.currentIndex();
+	return need.currentIndex();
 }
 
 QString Goal::getAmountStr() const {
-	amount.text();
+	return amount.text();
 }
 
 int Goal::getAmount() const {

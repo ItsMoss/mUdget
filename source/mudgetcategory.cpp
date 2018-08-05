@@ -99,14 +99,7 @@ void mudgetCategory::createRecord(int itemNumber) {
 		}
 
 		// get current time and send
-		time_t t;
-		time(&t);
-		QString tstamp(ctime(&t));
-		// only care about the day of week, month, day of month and year
-		// Ex: Sat_Jul_21_2018
-		QString year = tstamp.mid(tstamp.length() - 5, 4);
-		tstamp = tstamp.left(11);	// captures day of week, month, and day of month
-		tstamp += year;
+		QString tstamp(melpers::getCurrentTime().c_str());
 
 		// only send if valid entry
 		if (item2Record->second->value() != 0 && !item2Record->first->text().isEmpty()) {

@@ -87,6 +87,7 @@ private:
 	void clear_goals();
 	void create_income_category();
 	void delete_all();
+	bool delete_old_db_records();
 	void delete_temp();
 	int display_message(const QString & msg, bool question = false);
 	void find_matching_expenses(std::vector<mudgetCategory*> & matches, QString catname, bool temp=true);

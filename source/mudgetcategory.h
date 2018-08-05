@@ -2,14 +2,13 @@
 #define __mudgetCategory_H__
 
 #include "expenseitem.h"
+#include "melpers.h"
 #include <map>
 #include <qcombobox.h>
 #include <qfile.h>
 #include <qlayout.h>
 #include <qlineedit.h>
 #include <qobject.h>
-#include <string>
-#include <time.h>
 #include <vector>
 
 class mudgetCategory : public QFrame {
