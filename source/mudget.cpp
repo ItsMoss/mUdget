@@ -27,12 +27,6 @@ mudget::mudget(QWidget *parent)
 	connect(ui.monthComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 	connect(ui.yearComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 
-	// load current month displayed
-	loadTimer = new QTimer(this);
-	loadTimer->setSingleShot(true);
-	connect(loadTimer, SIGNAL(timeout()), this, SLOT(load()));
-	loadTimer->start(1000);
-
 	goalTimer = 0;
 
 	skipSlot = false;
@@ -43,9 +37,7 @@ mudget::mudget(QWidget *parent)
 mudget::~mudget() {
 	clear_goals();
 	delete_all();
-	if (loadTimer) {
-		delete loadTimer;
-	}
+
 	INFO("mUdget destructed");
 }
 
@@ -56,7 +48,7 @@ void mudget::addMudgetCategory() {
 	ui.mainLayout->replaceWidget(static_cast<QWidget*>(QObject::sender()), expenses.back());
 	static_cast<QWidget*>(QObject::sender())->hide();
 	connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
-	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString)));
+	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString, QString)));
 }
 
 
@@ -237,7 +229,7 @@ void mudget::openDatabaseWindow() {
 		dbView->setStyleSheet(styleSheet());
 		dbModel = 0;
 		dbModel = std::make_unique<QSqlRelationalTableModel>();
-		dbModel->setTable("THIS_WEEK");
+		dbModel->setTable("LAST3MONTHS");
 		dbModel->select();
 		if (dbModel->lastError().isValid()) {
 			ERROR("unable to open db window due to: " + dbModel->lastError().text().toStdString());
@@ -477,15 +469,15 @@ void mudget::performWantedCalculation() {
 	delete_temp();
 }
 
-void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QString t) {
+void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QString m, QString t) {
 	DEBUG("received record: " + exp.toStdString() + " " + std::to_string(amount) 
-		+ " " + cat.toStdString() + " " + t.toStdString());
+		+ " " + cat.toStdString() + " " + m.toStdString() + " " + t.toStdString());
 
 	if (dbAvailable) {
 		QSqlQuery query;
 		QString apo("'");
-		QString insert("INSERT OR REPLACE INTO THIS_WEEK (EXPENSE, AMOUNT, CATEGORY, ITEMNUMBER, TIMESTAMP) ");
-		insert += "VALUES (" + apo + exp + "', " + std::to_string(amount).c_str() + ", " + apo + cat + "', " + std::to_string(n).c_str() + ", " + apo + t + "');";
+		QString insert("INSERT OR IGNORE INTO LAST3MONTHS (EXPENSE, AMOUNT, CATEGORY, ITEMNUMBER, MONTH, TIMESTAMP) ");
+		insert += "VALUES ('" + exp + "', " + std::to_string(amount).c_str() + ", '" + cat + "', " + std::to_string(n).c_str() + ", '" + m + "', '" + t + "');";
 		query.exec(insert);
 		if (query.isActive()) {
 			DEBUG("successfully inserted record");
@@ -915,45 +907,45 @@ void mudget::delete_all() {
 }
 
 bool mudget::delete_old_db_records() {
-	// weeks span from Mon-Sun here
+	// deleting entries older than 3 months
 	QString t(melpers::getCurrentTime().c_str());
-	// t is formatted as Day_mm_dd_yyy
-	int nDays;
-	if (t.contains("Sun")) {
-		nDays = 7;
+	// t is formatted as Day_mmm_dd_yyyy
+	std::vector<QString> monthsVec;
+	monthsVec.push_back("Jan");
+	monthsVec.push_back("Feb");
+	monthsVec.push_back("Mar");
+	monthsVec.push_back("Apr");
+	monthsVec.push_back("May");
+	monthsVec.push_back("Jun");
+	monthsVec.push_back("Jul");
+	monthsVec.push_back("Aug");
+	monthsVec.push_back("Sep");
+	monthsVec.push_back("Oct");
+	monthsVec.push_back("Nov");
+	monthsVec.push_back("Dec");
+
+	int currIndex;
+	for (int i = 0; i < monthsVec.size(); ++i) {
+		if (monthsVec[i] == t.mid(4, 3)) {
+			currIndex = i;
+			break;
+		}
 	}
-	else if (t.contains("Sat")) {
-		nDays = 6;
-	}
-	else if (t.contains("Fri")) {
-		nDays = 5;
-	}
-	else if (t.contains("Thu")) {
-		nDays = 4;
-	}
-	else if (t.contains("Wed")) {
-		nDays = 3;
-	}
-	else if (t.contains("Tue")) {
-		nDays = 2;
-	}
-	else {	// "Mon"
-		nDays = 1;
-	}
-	QStringList daysThisWeek;
-	for (int n = 0; n < nDays; ++n) {
-		daysThisWeek << melpers::getCurrentTime(-n).c_str();
+	
+	QStringList monthsToKeep;
+	for (int n = 0; n < 3; ++n) {
+		monthsToKeep << monthsVec[((currIndex--) + 12) % 12];
 	}
 
-	// delete all records that do not have timestamp within daysThisWeek
+	// delete all records that do not have timestamp within monthsToKeep
 	QSqlQuery query;
 	QString apo("'");
-	QString del("DELETE FROM THIS_WEEK WHERE TIMESTAMP NOT IN (");
-	for (auto d : daysThisWeek) {
-		del += apo + d + apo + ", ";
+	QString pct("%");
+	QString del("DELETE FROM LAST3MONTHS WHERE TIMESTAMP NOT LIKE ");
+	for (auto m : monthsToKeep) {
+		del += apo + pct + m + pct + apo + " AND TIMESTAMP NOT LIKE ";
 	}
-	del.lastIndexOf(", ");
-	del.replace(del.lastIndexOf(", "), 2, ')');	// end in paranthesis instead of comma!
+	del = del.mid(0, del.size() - 24);	// remove the last " AND TIMESTAMP NOT LIKE "!
 	query.exec(del);
 	if (query.isActive()) {
 		DEBUG("successfully deleted old record(s)");
@@ -1048,25 +1040,26 @@ void mudget::init_database() {
 	}
 
 	// create table if it does not exist
-	if (db->record("THIS_WEEK").isEmpty()) {
+	if (db->record("LAST3MONTHS").isEmpty()) {
 		QSqlQuery query;
-		query.exec("CREATE TABLE THIS_WEEK (\
+		query.exec("CREATE TABLE LAST3MONTHS (\
 					ID			INTEGER	PRIMARY KEY		AUTOINCREMENT, \
 					EXPENSE		TEXT	NOT NULL, \
 					AMOUNT		MONEY	NOT NULL, \
 					CATEGORY	TEXT	NOT NULL, \
 					ITEMNUMBER	INTEGER	NOT NULL, \
+					MONTH		TEXT	NOT NULL, \
 					TIMESTAMP	TEXT	NOT NULL, \
-					UNIQUE(EXPENSE, CATEGORY, ITEMNUMBER) \
+					UNIQUE(EXPENSE, CATEGORY, ITEMNUMBER, MONTH) \
 					);");
 		if (!query.isActive()) {
-			ERROR("unable to create db table THIS_WEEK due to: " + query.lastError().text().toStdString());
+			ERROR("unable to create db table LAST3MONTHS due to: " + query.lastError().text().toStdString());
 			return;
 		}
-		INFO("created db table THIS_WEEK");
+		INFO("created db table LAST3MONTHS");
 	}
 	else {
-		INFO("db table THIS_WEEK already exists");
+		INFO("db table LAST3MONTHS already exists");
 	}
 
 	dbAvailable = true;

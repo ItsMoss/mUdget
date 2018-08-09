@@ -17,6 +17,7 @@
 #include <qsignalmapper.h>
 #include <qtextedit.h>
 #include <qtimer.h>
+#include <qthread.h>
 #include <set>
 #include <string>
 #include "ui_mudget.h"
@@ -27,7 +28,7 @@
 #define SAVE_LOAD_DIRECTORY "./moneyfiles/"
 #define MOSS_FILE_EXT		".moss"
 #define SETTINGS_FILE_NAME	"settings.mxt"
-#define DATABASE_FILE_NAME	"thevault.db"
+#define DATABASE_FILE_NAME	"safe.db"
 
 class mudget : public QMainWindow
 {
@@ -45,7 +46,6 @@ class mudget : public QMainWindow
 	std::map<QString, int> monthDaysMap;
 	std::map<QString, bool> monthsCalculateMap;
 	std::map<QString, bool> categoryCalculateMap;
-	QTimer* loadTimer;
 	bool skipSlot;
 	// goals tab
 	std::vector<Goal *> goals;
@@ -67,7 +67,7 @@ public slots:
 	void load(QString openFName = "");
 	void openDatabaseWindow();
 	void performWantedCalculation();
-	void receiveRecord(QString exp, double amount, QString cat, int n, QString t);
+	void receiveRecord(QString exp, double amount, QString cat, int n, QString m, QString t);
 	void save();
 	void setCalculationSettings();
 	void setCategories();

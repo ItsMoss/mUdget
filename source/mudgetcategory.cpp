@@ -100,10 +100,11 @@ void mudgetCategory::createRecord(int itemNumber) {
 
 		// get current time and send
 		QString tstamp(melpers::getCurrentTime().c_str());
+		QString mon(tstamp.mid(4, 3));
 
 		// only send if valid entry
 		if (item2Record->second->value() != 0 && !item2Record->first->text().isEmpty()) {
-			emit sendRecord(item2Record->first->text(), item2Record->second->value(), category.currentText(), itemNum, tstamp);
+			emit sendRecord(item2Record->first->text(), item2Record->second->value(), category.currentText(), itemNum, mon, tstamp);
 		}
 	}
 }
