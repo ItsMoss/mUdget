@@ -1471,6 +1471,11 @@ void mudget::update_weekly_goal(int needidx, int amount, QString category, QStri
 		return;
 	}
 
+	QString s(std::to_string(sum).c_str());
+	SEVERE(s.toStdString());
+	QString a(std::to_string(amount).c_str());
+	SEVERE(a.toStdString());
+
 	// calculate sum and compare with amount based on needidx to see goal progress
 	QString monthIdx(std::to_string(ui.monthComboBox->currentIndex()).c_str());
 	switch (needidx) {
