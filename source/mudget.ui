@@ -652,7 +652,7 @@ color: rgb(0,0,0);
               <property name="frameShadow">
                <enum>QFrame::Raised</enum>
               </property>
-              <layout class="QGridLayout" name="gridLayout_4">
+              <layout class="QGridLayout" name="progressFrameLayout">
                <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
                 <widget class="QLabel" name="goalProgressLabel">
                  <property name="text">

@@ -23,6 +23,7 @@
 #include "ui_mudget.h"
 #include "mudgetcategory.h"
 #include "goal.h"
+#include "goalbar.h"
 #include "logger.h"
 
 #define SAVE_LOAD_DIRECTORY "./moneyfiles/"
@@ -49,7 +50,9 @@ class mudget : public QMainWindow
 	bool skipSlot;
 	// goals tab
 	std::vector<Goal *> goals;
-	QTimer* goalTimer;
+	std::unique_ptr<QTimer> goalTimer;
+	std::unique_ptr<GoalBar> goalbar;
+	std::unique_ptr<QLabel> goalStringLabel;
 	// database
 	std::unique_ptr<QSqlDatabase> db;
 	bool dbAvailable;
@@ -67,7 +70,7 @@ public slots:
 	void load(QString openFName = "");
 	void openDatabaseWindow();
 	void performWantedCalculation();
-	void receiveRecord(QString exp, double amount, QString cat, int n, QString m, QString t);
+	void receiveRecord(QString exp, double amount, QString cat, int n, QString t);
 	void save();
 	void setCalculationSettings();
 	void setCategories();
@@ -99,8 +102,8 @@ private:
 	void update_categories();
 	void update_category_calculations();
 	void update_goal_progress(Goal * g);
-	void update_monthly_goal(int needidx, int amountidx, int categoryidx, QString tstamp);
-	void update_weekly_goal(int needidx, int amountidx, int categoryidx, QString tstamp);
-	void update_yearly_goal(int needidx, int amountidx, int categoryidx, QString tstamp);
+	void update_monthly_goal(int needidx, int amount, QString category, QString tstamp);
+	void update_weekly_goal(int needidx, int amount, QString category, QString tstamp);
+	void update_yearly_goal(int needidx, int amount, QString category, QString tstamp);
 	void update_profit();
 };

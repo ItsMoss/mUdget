@@ -86,7 +86,7 @@ int Goal::getAmount() const {
 }
 
 QString Goal::getCategoryText() const {
-	return category.currentText();
+	return category.currentText().mid(3);
 }
 
 int Goal::getCategoryIndex() const {

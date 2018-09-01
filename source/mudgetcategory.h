@@ -43,7 +43,7 @@ class mudgetCategory : public QFrame {
 	private:
 		std::string remove_newline(std::string & str);
 	signals:
-		void sendRecord(QString, double, QString, int, QString, QString);
+		void sendRecord(QString, double, QString, int, QString);
 		void updateExpenses();
 
 };

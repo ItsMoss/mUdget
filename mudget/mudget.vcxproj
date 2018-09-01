@@ -120,6 +120,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\source\expenseitem.h" />
+    <ClInclude Include="..\source\goalbar.h" />
     <ClInclude Include="..\source\melpers.h" />
     <QtMoc Include="..\source\goal.h" />
     <ClInclude Include="..\source\logger.h" />
@@ -129,6 +130,7 @@
   <ItemGroup>
     <ClCompile Include="..\source\expenseitem.cpp" />
     <ClCompile Include="..\source\goal.cpp" />
+    <ClCompile Include="..\source\goalbar.cpp" />
     <ClCompile Include="..\source\logger.cpp" />
     <ClCompile Include="..\source\main.cpp" />
     <ClCompile Include="..\source\melpers.cpp" />

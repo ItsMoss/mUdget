@@ -49,6 +49,9 @@
     <ClInclude Include="..\source\melpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\source\goalbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="..\source\mudget.h">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\source\melpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\goalbar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

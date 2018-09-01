@@ -27,7 +27,18 @@ mudget::mudget(QWidget *parent)
 	connect(ui.monthComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 	connect(ui.yearComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 
-	goalTimer = 0;
+	// goals
+	goalbar = std::make_unique<GoalBar>();
+	goalStringLabel = std::make_unique<QLabel>();
+	ui.progressFrameLayout->addWidget(goalStringLabel.get(), 0, 1, 1, 1, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(goalbar.get(), 1, 1, 1, 1, Qt::AlignCenter);
+	goalStringLabel->hide();
+	goalbar->hide();
+	goalTimer = std::make_unique<QTimer>();
+	goalTimer->setSingleShot(false);
+	goalTimer->setInterval(10000);
+	connect(goalTimer.get(), SIGNAL(timeout()), this, SLOT(calculateGoalProgress()));
+	goalTimer->start();
 
 	skipSlot = false;
 	INFO("mUdget constructed");
@@ -37,6 +48,7 @@ mudget::mudget(QWidget *parent)
 mudget::~mudget() {
 	clear_goals();
 	delete_all();
+	goalTimer.reset();
 
 	INFO("mUdget destructed");
 }
@@ -48,19 +60,24 @@ void mudget::addMudgetCategory() {
 	ui.mainLayout->replaceWidget(static_cast<QWidget*>(QObject::sender()), expenses.back());
 	static_cast<QWidget*>(QObject::sender())->hide();
 	connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
-	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString, QString)));
+	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString)));
 }
 
 
 void mudget::calculateGoalProgress() {
 	static int count = 0;
-	if (goals.size()) {
-		Goal * goal2calculate = goals[(count % goals.size())];
+	if (goals.size() > 1) {
+		ui.goalProgressLabel->hide();
+		Goal * goal2calculate = goals[(count % (goals.size() - 1))];
 		update_goal_progress(goal2calculate);
+		goalStringLabel->setText(goal2calculate->save().c_str());
+		goalStringLabel->show();
+		goalbar->show();
 		++count;
 	}
 	else {
 		count = 0;
+		goalbar->hide();
 		ui.goalProgressLabel->show();
 	}
 }
@@ -122,6 +139,8 @@ void mudget::load(QString openFName) {
 
 	if (openFName == "") {
 		// this means user has not logged and/or saved any expenses for this month
+		ui.expensesSpinBox->setValue(0);
+		update_profit();
 		return;
 	}
 
@@ -156,7 +175,7 @@ void mudget::load(QString openFName) {
 			updateIncome();
 		}
 		else {
-			tempIncome = new mudgetCategory(categoryMap);
+			tempIncome = new mudgetCategory(categoryMap, false);
 			if (!tempIncome->load(file2load)) {
 				ERROR("loading temp income failed");
 				display_message("Error loading file - loading temp income failed.");
@@ -213,6 +232,7 @@ void mudget::load(QString openFName) {
 		if (!fnameProvided) {
 			ui.monthLineEdit->setText(monthMap[ui.monthComboBox->currentIndex()]);
 			ui.yearLineEdit->setText(yearMap[ui.yearComboBox->currentIndex()]);
+			setGeometry(x(), y(), 0, 0);
 			INFO("loading was successful");
 			display_message("Loading was successful.");
 		}
@@ -469,7 +489,8 @@ void mudget::performWantedCalculation() {
 	delete_temp();
 }
 
-void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QString m, QString t) {
+void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QString t) {
+	QString m(ui.monthComboBox->currentText());	// get current month
 	DEBUG("received record: " + exp.toStdString() + " " + std::to_string(amount) 
 		+ " " + cat.toStdString() + " " + m.toStdString() + " " + t.toStdString());
 
@@ -869,6 +890,7 @@ void mudget::clear_goals() {
 		}
 	}
 	goals.clear();
+	goalbar.reset();
 	ui.createGoalButton->show();
 }
 
@@ -1326,8 +1348,8 @@ void mudget::update_category_calculations() {
 void mudget::update_goal_progress(Goal * g) {
 	// convert goal to its number counterpart via indexes/values
 	int needi = g->getNeedIndex();
-	int amounti = g->getAmount();
-	int categoryi = g->getCategoryIndex();
+	int amount = g->getAmount();
+	QString category = g->getCategoryText();
 	int timei = g->getTimeIndex();
 
 	// get current timestamp
@@ -1339,15 +1361,15 @@ void mudget::update_goal_progress(Goal * g) {
 	// update based on time index
 	if (timei == 1) {
 		// weekly - uses database
-		update_weekly_goal(needi, amounti, categoryi, tstamp);
+		update_weekly_goal(needi, amount, category, tstamp);
 	}
 	else if (timei == 2) {
 		// monthly - uses corresponding file if saved
-		update_monthly_goal(needi, amounti, categoryi, tstamp);
+		update_monthly_goal(needi, amount, category, tstamp);
 	}
 	else if (timei == 3) {
 		// yearly - uses all saved corresponding files
-		update_yearly_goal(needi, amounti, categoryi, tstamp);
+		update_yearly_goal(needi, amount, category, tstamp);
 	}
 	else {
 		WARN("tried to update the progress of a goal with invalid time index");
@@ -1355,17 +1377,120 @@ void mudget::update_goal_progress(Goal * g) {
 }
 
 
-void mudget::update_monthly_goal(int needidx, int amountidx, int categoryidx, QString tstamp) {
+void mudget::update_monthly_goal(int needidx, int amount, QString category, QString tstamp) {
 
 }
 
 
-void mudget::update_weekly_goal(int needidx, int amountidx, int categoryidx, QString tstamp) {
+void mudget::update_weekly_goal(int needidx, int amount, QString category, QString tstamp) {
+	// use tstamp to get all days this week that have passed
+	int nDays;
+	if (tstamp.contains("Sun")) {
+		nDays = 7;
+	}
+	else if (tstamp.contains("Sat")) {
+		nDays = 6;
+	}
+	else if (tstamp.contains("Fri")) {
+		nDays = 5;
+	}
+	else if (tstamp.contains("Thu")) {
+		nDays = 4;
+	}
+	else if (tstamp.contains("Wed")) {
+		nDays = 3;
+	}
+	else if (tstamp.contains("Tue")) {
+		nDays = 2;
+	}
+	else {	// "Mon"
+		nDays = 1;
+	}
+	QStringList daysThisWeek;
+	for (int n = 0; n < nDays; ++n) {
+		daysThisWeek << melpers::getCurrentTime(-n).c_str();
+	}
+	// determine the category C of interest via categoryidx
+	bool foundValue = category == "everything";
+	QString actualCategory;
+	if (!foundValue) {
+		for (auto it = categoryMap.begin(); it != categoryMap.end(); ++it) {
+			if (it->second == category) {
+				foundValue = true;
+				actualCategory = category;
+				break;
+			}
+		}
+		if (!foundValue) {
+			// category associated with goal is not in current category map
+			return;
+		}
+	}
 
+	// set up category for select query
+	QString category2select("(");
+	if (!actualCategory.isEmpty()) {
+		category2select += "'" + actualCategory + "'";
+	}
+	else {
+		for (auto it = categoryMap.begin(); it != categoryMap.end(); ++it) {
+			category2select += "'" + it->second + "', ";
+		}
+		category2select.remove(category2select.size() - 2, 2);
+	}
+	category2select += ");";
+
+	// select AMOUNT from all records from db that are from this week AND in actualCategory
+	QSqlQuery query;
+	// SELECT SUM(AMOUNT) FROM LAST3MONTHS WHERE TIMESTAMP IN (daysThisWeek) AND CATEGORY IN (C)
+	// (if there is a SQL sum function then include that in query and just return that)
+	QString selectSum("SELECT SUM(AMOUNT) FROM LAST3MONTHS WHERE TIMESTAMP IN (");
+	for (auto d : daysThisWeek) {
+		selectSum += "'" + d + "', ";
+	}
+	selectSum.replace(selectSum.size() - 2, 2, ")");	// replace last ", " with closing parenthesis
+	selectSum += " AND CATEGORY IN " + category2select;
+	
+	query.exec(selectSum);
+	int sum;
+	if (query.isActive() && query.isSelect()) {
+		if (query.next()) {
+			sum = query.value(0).toInt();
+		}
+		else {
+			QString errorstring("unable to select amount sum due to: ");
+			errorstring += query.lastError().text();
+			ERROR(errorstring.toStdString());
+			return;
+		}
+	}
+	else {
+		QString errorstring("query [");
+		errorstring += selectSum + "] failed due to: " + query.lastError().text();
+		ERROR(errorstring.toStdString());
+		return;
+	}
+
+	// calculate sum and compare with amount based on needidx to see goal progress
+	QString monthIdx(std::to_string(ui.monthComboBox->currentIndex()).c_str());
+	switch (needidx) {
+	case 1:	// spend less than
+		goalbar->update(amount, amount - sum);
+		break;
+	case 2:	// make profit
+		if (monthIdx.size() == 1) {
+			monthIdx = "0" + monthIdx;
+		}
+		goalbar->update(calculate_income(false) / (float)monthDaysMap[monthIdx] * 7, sum);
+		break;
+	default:
+		ERROR("Attempted to use unknown need index to update weekly goal");
+		return;
+	}
 }
 
 
-void mudget::update_yearly_goal(int needidx, int amountidx, int categoryidx, QString tstamp) {
+void mudget::update_yearly_goal(int needidx, int amount, QString category, QString tstamp) {
 
 }
 
