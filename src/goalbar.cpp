@@ -1,13 +1,19 @@
 #include "goalbar.h"
 
 GoalBar::GoalBar(QWidget * parent) : QProgressBar(parent) {
-	QString progressBarStyle("QProgressBar {border: 3px solid white;border-radius: 5px;background-color:#FF0000} QProgressBar::chunk {width:40px;");
-	percent2Color[0.0] = progressBarStyle + "background-color: #00FF00;}";
-	percent2Color[0.2] = progressBarStyle + "background-color: #00FF00;}";
-	percent2Color[0.4] = progressBarStyle + "background-color: #00FF00;}";
-	percent2Color[0.6] = progressBarStyle + "background-color: #00FF00;}";
+	QString progressBarStyle("QProgressBar {border: 5px solid green;border-radius: 5px;background-color:#FFFFFF;text-align:center;} QProgressBar::chunk {width:1px;");
+	percent2Color[0.0] = progressBarStyle + "background-color: #FF0000;}";
+	percent2Color[0.2] = progressBarStyle + "background-color: #FFA500;}";
+	percent2Color[0.4] = progressBarStyle + "background-color: #FFFF00;}";
+	percent2Color[0.6] = progressBarStyle + "background-color: #ADFF2F;}";
 	percent2Color[0.8] = progressBarStyle + "background-color: #00FF00;}";
 	update(100, 100);
+	setFixedSize(400, 70);
+	setFormat("$%v");
+	QFont f;
+	f.setBold(true);
+	f.setPointSize(12);
+	setFont(f);
 }
 
 GoalBar::GoalBar(const GoalBar & rhs) {

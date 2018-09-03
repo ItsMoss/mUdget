@@ -201,6 +201,10 @@ std::string Goal::remove_newline(std::string & str) {
 }
 
 void Goal::validate() {
+	// force category to be everything if profit selected
+	if (need.currentIndex() == 2) {
+		category.setCurrentIndex(1);	// "on everything"
+	}
 	// let the trials and tribulations on the road to broadcast begin...
 	if (need.currentText().isEmpty()) {
 		return;

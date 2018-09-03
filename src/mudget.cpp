@@ -4,6 +4,13 @@ mudget::mudget(QWidget *parent)
 	: QMainWindow(parent)
 {
 	ui.setupUi(this);
+	// set style
+	QFile stylesheet("mStyle.qss");
+	stylesheet.open(QFile::ReadOnly);
+	QString sheet2set(QLatin1String(stylesheet.readAll()));
+	setStyleSheet(sheet2set);
+	stylesheet.close();
+
 	// bootup initializations
 	// create folder (if does not exist)
 	if (!QDir(SAVE_LOAD_DIRECTORY).exists()) {
@@ -36,7 +43,7 @@ mudget::mudget(QWidget *parent)
 	goalbar->hide();
 	goalTimer = std::make_unique<QTimer>();
 	goalTimer->setSingleShot(false);
-	goalTimer->setInterval(10000);
+	goalTimer->setInterval(5000);
 	connect(goalTimer.get(), SIGNAL(timeout()), this, SLOT(calculateGoalProgress()));
 	goalTimer->start();
 
@@ -49,6 +56,7 @@ mudget::~mudget() {
 	clear_goals();
 	delete_all();
 	goalTimer.reset();
+	goalbar.reset();
 
 	INFO("mUdget destructed");
 }
@@ -57,7 +65,11 @@ mudget::~mudget() {
 void mudget::addMudgetCategory() {
 	INFO("new category added");
 	expenses.push_back(new mudgetCategory(categoryMap));
-	ui.mainLayout->replaceWidget(static_cast<QWidget*>(QObject::sender()), expenses.back());
+	int index = ui.mainLayout->indexOf(static_cast<QWidget*>(QObject::sender()));
+	int row, col, rowspan, colspan;
+	ui.mainLayout->getItemPosition(index, &row, &col, &rowspan, &colspan);
+	ui.mainLayout->removeWidget(static_cast<QWidget*>(QObject::sender()));
+	ui.mainLayout->addWidget(expenses.back(), row, col, rowspan, colspan, Qt::AlignCenter);
 	static_cast<QWidget*>(QObject::sender())->hide();
 	connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
 	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString)));
@@ -126,7 +138,9 @@ void mudget::load(QString openFName) {
 				break;
 			}
 		}
-		INFO("month loaded has not been saved and is " + fname);
+		if (openFName.isEmpty()) {
+			INFO("month loaded has not been saved and is " + fname);
+		}
 	}
 
 	// deallocate current expenses
@@ -320,7 +334,7 @@ void mudget::performWantedCalculation() {
 			dirIt.next();
 			if (dirIt.fileName().endsWith(MOSS_FILE_EXT) && 
 				monthsCalculateMap[dirIt.fileName().left(dirIt.fileName().length()-5)]) {
-				load(dirIt.filePath());	// need to actually update this method
+				load(dirIt.filePath());
 				// update duration calculations
 				nDays += monthDaysMap[dirIt.fileName().left(2)];
 				++nMonths;
@@ -890,14 +904,23 @@ void mudget::clear_goals() {
 		}
 	}
 	goals.clear();
-	goalbar.reset();
-	ui.createGoalButton->show();
+	if (goalbar.get()) {
+		goalbar->hide();
+	}
+	if (goalStringLabel.get()) {
+		goalStringLabel->hide();
+	}
+	ui.goalProgressLabel->show();
 }
 
 
 void mudget::create_income_category() {
 	uiIncome = new mudgetCategory("Income", categoryMap);
-	ui.mainLayout->replaceWidget(ui.addCategory2, uiIncome);
+	int index = ui.mainLayout->indexOf(ui.addCategory2);
+	int row, col, rowspan, colspan;
+	ui.mainLayout->getItemPosition(index, &row, &col, &rowspan, &colspan);
+	ui.mainLayout->removeWidget(ui.addCategory2);
+	ui.mainLayout->addWidget(uiIncome, row, col, rowspan, colspan, Qt::AlignCenter);
 	ui.addCategory2->hide();
 	connect(uiIncome, SIGNAL(updateExpenses()), this, SLOT(updateIncome()));
 }
@@ -1378,7 +1401,69 @@ void mudget::update_goal_progress(Goal * g) {
 
 
 void mudget::update_monthly_goal(int needidx, int amount, QString category, QString tstamp) {
+	// get correct .moss file
+	QString file2load;
+	QString m(tstamp.mid(4, 3));	// month
+	QString y(tstamp.right(4));		// year
+	QString mNum;					// month as number
+	for (auto it = monthMap.begin(); it != monthMap.end(); ++it) {
+		if (it->second == m) {
+			mNum = std::to_string(it->first).c_str();
+			if (mNum.size() == 1) {
+				mNum = "0" + mNum;
+			}
+			break;
+		}
+	}
+	file2load = mNum + y + MOSS_FILE_EXT;
 
+	// find and laod it
+	bool success = false;
+	double sum = 0;
+	QDirIterator dirIt(SAVE_LOAD_DIRECTORY);
+	while (dirIt.hasNext()) {
+		dirIt.next();
+		if (dirIt.fileName() == file2load) {
+			load(dirIt.filePath());
+			if (category == "everything") {
+				if (needidx == 1) {
+					sum = calculate_expenses(true, true);
+				}
+				else if (needidx == 2) {
+					sum = calculate_income() - calculate_expenses(true, true);
+				}
+			}
+			else {
+				std::vector<mudgetCategory*> cat;
+				find_matching_expenses(cat, category);
+				for (auto c : cat) {
+					sum += c->get_total();
+				}
+			}
+			success = true;
+			break;
+		}
+	}
+
+	if (!success) {
+		ERROR("Unable to find .moss file while updating monthly goal for month: " + file2load.toStdString());
+		return;
+	}
+
+	// calculate sum and compare with amount based on needidx to see goal progress
+	switch (needidx) {
+	case 1:	// spend less than
+		goalbar->update(amount, amount - sum);
+		break;
+	case 2:	// make profit
+		goalbar->update(amount, sum);
+		break;
+	default:
+		ERROR("Attempted to use unknown need index to update monthly goal");
+		return;
+	}
+
+	delete_temp();
 }
 
 
@@ -1471,22 +1556,17 @@ void mudget::update_weekly_goal(int needidx, int amount, QString category, QStri
 		return;
 	}
 
-	QString s(std::to_string(sum).c_str());
-	SEVERE(s.toStdString());
-	QString a(std::to_string(amount).c_str());
-	SEVERE(a.toStdString());
-
 	// calculate sum and compare with amount based on needidx to see goal progress
 	QString monthIdx(std::to_string(ui.monthComboBox->currentIndex()).c_str());
+	if (monthIdx.size() == 1) {
+		monthIdx = "0" + monthIdx;
+	}
 	switch (needidx) {
 	case 1:	// spend less than
 		goalbar->update(amount, amount - sum);
 		break;
 	case 2:	// make profit
-		if (monthIdx.size() == 1) {
-			monthIdx = "0" + monthIdx;
-		}
-		goalbar->update(calculate_income(false) / (float)monthDaysMap[monthIdx] * 7, sum);
+		goalbar->update(amount, (calculate_income(false) / (float)monthDaysMap[monthIdx] * 7) - sum);
 		break;
 	default:
 		ERROR("Attempted to use unknown need index to update weekly goal");
@@ -1496,7 +1576,57 @@ void mudget::update_weekly_goal(int needidx, int amount, QString category, QStri
 
 
 void mudget::update_yearly_goal(int needidx, int amount, QString category, QString tstamp) {
+	// get correct .moss files
+	QString fileEnd;
+	QString y(tstamp.right(4));		// year
+	fileEnd = y + MOSS_FILE_EXT;
 
+	// find and laod it
+	bool success = false;
+	double sum = 0;
+	QDirIterator dirIt(SAVE_LOAD_DIRECTORY);
+	while (dirIt.hasNext()) {
+		dirIt.next();
+		if (dirIt.fileName().endsWith(fileEnd)) {
+			load(dirIt.filePath());
+			if (category == "everything") {
+				if (needidx == 1) {
+					sum += calculate_expenses(true, true);
+				}
+				else if (needidx == 2) {
+					sum += calculate_income() - calculate_expenses(true, true);
+				}
+			}
+			else {
+				std::vector<mudgetCategory*> cat;
+				find_matching_expenses(cat, category);
+				for (auto c : cat) {
+					sum += c->get_total();
+				}
+			}
+			success = true;
+		}
+	}
+
+	if (!success) {
+		ERROR("Unable to find .moss file while updating yearly goal for year: " + y.toStdString());
+		return;
+	}
+
+	// calculate sum and compare with amount based on needidx to see goal progress
+	switch (needidx) {
+	case 1:	// spend less than
+		goalbar->update(amount, amount - sum);
+		break;
+	case 2:	// make profit
+		goalbar->update(amount, sum);
+		break;
+	default:
+		ERROR("Attempted to use unknown need index to update yearly goal");
+		return;
+	}
+
+	delete_temp();
 }
 
 

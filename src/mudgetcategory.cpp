@@ -20,6 +20,7 @@ mudgetCategory::mudgetCategory(std::map<int, QString> & map, bool showIt) : cate
 	setLayout(&mainLayout);
 	setStyleSheet("border: 3px solid white");
 	setVisible(showIt);
+	setSizePolicy(QSizePolicy::Minimum , QSizePolicy::Minimum);
 }
 
 mudgetCategory::mudgetCategory(QString cat, std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false) {

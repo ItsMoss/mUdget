@@ -9,6 +9,7 @@
 #include <qlayout.h>
 #include <qlineedit.h>
 #include <qobject.h>
+#include <qsizepolicy.h>
 #include <vector>
 
 class mudgetCategory : public QFrame {
