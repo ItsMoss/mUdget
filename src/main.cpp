@@ -7,5 +7,6 @@ int main(int argc, char *argv[])
 	mudget w;
 	w.show();
 	w.load();
+	w.setWindowIcon(QPixmap(":mudget/Resources/icon.png"));
 	return a.exec();
 }

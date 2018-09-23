@@ -25,6 +25,7 @@ mudget::mudget(QWidget *parent)
 	tempIncome = 0;
 	clean_up_ui();
 	init_database();
+	init_display_case();
 
 	// signal slot connections
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(save()));
@@ -57,6 +58,12 @@ mudget::~mudget() {
 	delete_all();
 	goalTimer.reset();
 	goalbar.reset();
+	goldTrophies.first.reset();
+	goldTrophies.second.reset();
+	silverTrophies.first.reset();
+	silverTrophies.second.reset();
+	bronzeTrophies.first.reset();
+	bronzeTrophies.second.reset();
 
 	INFO("mUdget destructed");
 }
@@ -92,29 +99,6 @@ void mudget::calculateGoalProgress() {
 		goalbar->hide();
 		ui.goalProgressLabel->show();
 	}
-}
-
-
-void mudget::createGoals() {
-	INFO("creating goals. yayyyy!");
-	if (QObject::sender() == ui.createGoalButton) {
-		DEBUG("for the first time too...");
-		ui.createGoalButton->hide();
-	}
-	else {
-		int resp = display_message("Would you like to set this goal?", true);
-		if (resp == QMessageBox::Yes) {
-			DEBUG("new goal set");
-			display_message("New goal successfully set!");
-			goals.back()->setLock(true);
-		}
-		else {
-			return;
-		}
-	}
-	goals.push_back(new Goal(categoryMap));
-	ui.goalsVerticalLayout->addWidget(goals.back());
-	connect(goals.back(), SIGNAL(broadcast()), this, SLOT(createGoals()));
 }
 
 
@@ -746,6 +730,63 @@ void mudget::updateExpenses() {
 }
 
 
+void mudget::updateGoals(bool creating) {
+	if (QObject::sender() == ui.createGoalButton) {
+		creating = true;
+	}
+	if (creating) {
+		INFO("creating goals. yayyyy!");
+		if (QObject::sender() == ui.createGoalButton) {
+			DEBUG("for the first time too...");
+			ui.createGoalButton->hide();
+		}
+		else {
+			int resp = display_message("Would you like to set this goal?", true);
+			if (resp == QMessageBox::Yes) {
+				DEBUG("new goal set");
+				display_message("New goal successfully set!");
+				goals.back()->setLock(true);
+			}
+			else {
+				return;
+			}
+		}
+		goals.push_back(new Goal(categoryMap));
+		ui.goalsVerticalLayout->addWidget(goals.back());
+		connect(goals.back(), SIGNAL(broadcast(bool)), this, SLOT(updateGoals(bool)));
+	}
+	else {
+		INFO("deleting goals. booo?...");
+		// find the goal being deleted
+		const QPushButton * goal2del = 0;
+		int index2del = 0;
+		for (auto g : goals) {
+			if (g == QObject::sender()) {
+				goal2del = g->getDelete();
+				break;
+			}
+			++index2del;
+		}
+		if (!goal2del) {
+			ERROR("tried to delete goal that was not found in goals");
+			display_message("Error occurred while trying to delete goal");
+			return;
+		}
+		// remove
+		DEBUG("index2del = " + std::to_string(index2del));
+		delete goals[index2del];
+		goals.erase(goals.begin() + index2del);
+		if (goals.size() == 0) {
+			// add back create first goal button
+			ui.createGoalButton->show();
+			INFO("back to square one, no goals are set :( ...");
+		}
+		DEBUG("successfully deleted goal");
+		display_message("Successfully (or unsuccessfully :/ ) deleted goal");
+	}
+}
+
+
 void mudget::updateIncome() {
 	ui.incomeSpinBox->setValue(calculate_income(false));
 	update_profit();
@@ -821,6 +862,9 @@ bool mudget::auto_save_settings() {
 	const std::string currentMonth("Current Month\n");
 	const std::string goalsStr("Goals\n");
 	file2save.open(QIODevice::WriteOnly);
+	// Timestamp
+	file2save.write(melpers::getCurrentTime(0, true).c_str());
+	file2save.write("\n\n");
 	// Categories
 	file2save.write(categories.c_str());
 	for (std::map<int, QString>::const_iterator it = categoryMap.begin();
@@ -869,6 +913,53 @@ bool mudget::auto_save_settings() {
 	file2save.write("\n");
 	file2save.close();
 	return true;
+}
+
+
+void mudget::award_trophies() {
+	// determine time since last login
+	int nDays = 0;
+	int daysSinceSunday = 0;
+	bool foundSunday = false;
+	bool foundLastMonth = false;
+	bool foundLastYear = false;
+	std::string day;
+	while ((day = melpers::getCurrentTime(-nDays)) != lastLoginTime) {
+		if (!foundSunday && day.substr(0, 3) != "Sun") {
+			daysSinceSunday++;
+		}
+		else {
+			foundSunday = true;
+		}
+		if (!foundLastMonth && day.substr(4, 3) != lastLoginTime.substr(4, 3)) {
+			foundLastMonth = true;
+		}
+		if (!foundLastYear && day.substr(day.length() - 4, 4) != lastLoginTime.substr(day.length() - 4, 4)) {
+			foundLastYear = true;
+		}
+		nDays++;
+		if (nDays > 100) {
+			// user has not logged in for over 3 months, fugg it!
+			WARN("Last login was over 100 days ago");
+			display_message("Last login was over 100 days ago");
+			return;
+		}
+	}
+
+	// was last login last week?
+	if (nDays > daysSinceSunday && foundSunday) {
+
+	}
+
+	// was last login last month?
+	if (foundLastMonth) {
+
+	}
+
+	// was last login last year?
+	if (foundLastYear) {
+
+	}
 }
 
 
@@ -1119,6 +1210,42 @@ void mudget::init_database() {
 }
 
 
+void mudget::init_display_case() {
+	ui.goalDisplayLabel->hide();
+
+	int col = 0;
+	// gold
+	goldTrophies.first = std::make_unique<QLabel>();
+	goldTrophies.first->setPixmap(QPixmap(":mudget/Resources/gold.png"));
+	goldTrophies.second = std::make_unique<QLabel>("0");
+	goldTrophies.second->setStyleSheet("font-weight: bold; font-family: Verdana; font-size: 18pt;");
+
+	ui.displayCaseLayout->addWidget(goldTrophies.first.get(), 0, col, Qt::AlignCenter);
+	ui.displayCaseLayout->addWidget(goldTrophies.second.get(), 1, col++, Qt::AlignCenter);
+	// silver
+	silverTrophies.first = std::make_unique<QLabel>();
+	silverTrophies.first->setPixmap(QPixmap(":mudget/Resources/silver.png"));
+	silverTrophies.second = std::make_unique<QLabel>("0");
+	silverTrophies.second->setStyleSheet("font-weight: bold; font-family: Verdana; font-size: 18pt;");
+
+	ui.displayCaseLayout->addWidget(silverTrophies.first.get(), 0, col, Qt::AlignCenter);
+	ui.displayCaseLayout->addWidget(silverTrophies.second.get(), 1, col++, Qt::AlignCenter);
+	// bronze
+	bronzeTrophies.first = std::make_unique<QLabel>();
+	bronzeTrophies.first->setPixmap(QPixmap(":mudget/Resources/bronze.png"));
+	bronzeTrophies.second = std::make_unique<QLabel>("0");
+	bronzeTrophies.second->setStyleSheet("font-weight: bold; font-family: Verdana; font-size: 18pt;");
+
+	ui.displayCaseLayout->addWidget(bronzeTrophies.first.get(), 0, col, Qt::AlignCenter);
+	ui.displayCaseLayout->addWidget(bronzeTrophies.second.get(), 1, col++, Qt::AlignCenter);
+
+	// award any trophies earned since last login
+	award_trophies();
+
+	DEBUG("successfully initialized display case");
+}
+
+
 void mudget::init_month_year_maps() {
 	INFO("initializing month year maps");
 	// months
@@ -1180,7 +1307,27 @@ bool mudget::load_settings() {
 		const std::string goalsStr("Goals");
 		file2load.open(QIODevice::ReadOnly);
 		std::string line;
+		// Timestamp
 		line = remove_newline(file2load.readLine().toStdString());
+		if (line.empty()) {
+			ERROR("loading settings failed - first line is empty");
+			display_message("Error loading settings file - empty first line");
+			file2load.close();
+			return false;
+		}
+		else if (line != categories) {	// assume it is timestamp then
+			// update last login label
+			QString lastLogin("Last Login: ");
+			ui.loginLabel->setText(lastLogin + line.c_str());
+			// set last login time
+			lastLoginTime = line;
+			std::string yr = lastLoginTime.substr(lastLoginTime.length() - 4, 4);
+			lastLoginTime = lastLoginTime.substr(0, 11);
+			lastLoginTime += yr;
+			// skip empty line
+			file2load.readLine().toStdString();
+			line = remove_newline(file2load.readLine().toStdString());
+		}
 		// Categories
 		if (line != categories) {
 			ERROR("loading settings failed - expected line: Categories");
@@ -1301,7 +1448,7 @@ bool mudget::load_settings() {
 		if (ui.createGoalButton->isHidden()) {
 			goals.push_back(new Goal(categoryMap));
 			ui.goalsVerticalLayout->addWidget(goals.back());
-			connect(goals.back(), SIGNAL(broadcast()), this, SLOT(createGoals()));
+			connect(goals.back(), SIGNAL(broadcast(bool)), this, SLOT(updateGoals(bool)));
 		}
 		file2load.close();
 	}

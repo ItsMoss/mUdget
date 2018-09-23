@@ -27,6 +27,10 @@ Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false) {
 	time.addItems(timeList);
 	hLayout.addWidget(&time);
 	connect(&time, SIGNAL(currentIndexChanged(int)), this, SLOT(validate()));
+	deleteButton.setText("Delete");
+	hLayout.addWidget(&deleteButton);
+	connect(&deleteButton, SIGNAL(clicked()), this, SLOT(resetGoal()));
+	deleteButton.hide();
 	setLayout(&hLayout);
 	show();
 }
@@ -54,7 +58,11 @@ Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat,
 	time.addItems(timeList);
 	hLayout.addWidget(&time);
 	connect(&time, SIGNAL(currentIndexChanged(int)), this, SLOT(validate()));
+	deleteButton.setText("Delete");
+	hLayout.addWidget(&deleteButton);
+	connect(&deleteButton, SIGNAL(clicked()), this, SLOT(resetGoal()));
 	setLayout(&hLayout);
+	deleteButton.hide();
 
 	// initialize goal
 	need.setCurrentIndex(needIndex);
@@ -67,6 +75,10 @@ Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat,
 
 Goal::~Goal() {
 
+}
+
+const QPushButton * Goal::getDelete() const {
+	return &deleteButton;
 }
 
 QString Goal::getNeedText() const {
@@ -200,6 +212,19 @@ std::string Goal::remove_newline(std::string & str) {
 	}
 }
 
+void Goal::resetGoal() {
+	// unlock
+	locked = false;
+	// empty
+	need.setCurrentIndex(0);
+	amount.setValue(0);
+	category.setCurrentIndex(0);
+	time.setCurrentIndex(0);
+	// signal removal
+	deleteButton.hide();
+	emit broadcast(false);
+}
+
 void Goal::validate() {
 	// force category to be everything if profit selected
 	if (need.currentIndex() == 2) {
@@ -219,5 +244,6 @@ void Goal::validate() {
 		return;
 	}
 	// goal seems valid!
-	emit broadcast();
+	deleteButton.show();
+	emit broadcast(true);
 }

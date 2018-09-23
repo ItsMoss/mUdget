@@ -37,6 +37,7 @@ class mudget : public QMainWindow
 
 	Ui::mudgetClass ui;										// ui
 	// main tab
+	std::string lastLoginTime;								// timestamp of last login
 	mudgetCategory* uiIncome;								// income category (displayed)
 	std::vector<mudgetCategory*> expenses;					// all expense categories (displayed)
 	std::vector<mudgetCategory*> tempExpenses;				// all expense categories for month(s) loaded while doing various calculations (not displayed)
@@ -53,6 +54,9 @@ class mudget : public QMainWindow
 	std::unique_ptr<QTimer> goalTimer;						// timer to start showing goal(s) progress
 	std::unique_ptr<GoalBar> goalbar;						// progress bar for goal currently being displayed
 	std::unique_ptr<QLabel> goalStringLabel;				// label displaying current goal whose progress is being displayed
+	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > goldTrophies;		// gold trophies won (pic and total)
+	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > silverTrophies;	// silver trophies won (pic and total)
+	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > bronzeTrophies;	// bronze trophies won (pic and total)
 	// database
 	std::unique_ptr<QSqlDatabase> db;						// db connection
 	bool dbAvailable;										// does a db connection exist
@@ -66,7 +70,6 @@ public:
 public slots:
 	void addMudgetCategory();								// adds a new expense category to display
 	void calculateGoalProgress();							// runs every 5 sec to display progress of each goal
-	void createGoals();										// allocates space for user to input first goal
 	void load(QString openFName = "");						// loads in a .moss file (i.e. a month's financial data)
 	void openDatabaseWindow();								// displayes db view
 	void performWantedCalculation();						// performs one of many calculations user has requested
@@ -76,6 +79,7 @@ public slots:
 	void setCategories();									// sets which categories are availble for expense categories
 	void updateCurrentMonthYear(int);						// updates/loads current income and expenses displayed for month selected in combo
 	void updateExpenses();									// recalculates total expenses for current month
+	void updateGoals(bool creating);						// adds or removes a goal
 	void updateIncome();									// recalculates total income for current month
 
 protected:
@@ -84,6 +88,7 @@ protected:
 private:
 	mudgetCategory* add_first_available_expense_category();			// adds loaded category into first available space within ui
 	bool auto_save_settings();										// saves settings to SETTINGS_FILE_NAME upon closing app
+	void award_trophies();											// award any trophies that should be rewarded since last login
 	double calculate_expenses(bool temp=true, bool calcAll=false);	// calculates expenses for currently loaded .moss file
 	double calculate_income(bool temp=true) const;					// calculates income for currently loaded .moss file
 	void clean_up_ui();												
@@ -95,6 +100,7 @@ private:
 	int display_message(const QString & msg, bool question = false);	// displayes message to user
 	void find_matching_expenses(std::vector<mudgetCategory*> & matches, QString catname, bool temp=true);	// finds all expenses under specified category in current month
 	void init_database();											// init db
+	void init_display_case();										// inits display case on Goals tab
 	void init_month_year_maps();									// init maps for month and year
 	bool load_settings();											// load auto-saved settings
 	std::string remove_newline(std::string & str);					// remove newline character

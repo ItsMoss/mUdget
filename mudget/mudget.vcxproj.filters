@@ -73,6 +73,9 @@
     <ClInclude Include="..\src\melpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="..\src\goal.h">
@@ -94,5 +97,23 @@
     <None Include="..\src\mStyle.qss">
       <Filter>Form Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\images\Icon1.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\images\bronze.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\images\gold.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\images\silver.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="icon1.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="mudget.rc" />
   </ItemGroup>
 </Project>

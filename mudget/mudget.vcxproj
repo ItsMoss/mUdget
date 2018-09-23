@@ -130,6 +130,7 @@
     <ClInclude Include="..\src\goalbar.h" />
     <ClInclude Include="..\src\logger.h" />
     <ClInclude Include="..\src\melpers.h" />
+    <ClInclude Include="resource.h" />
     <QtMoc Include="..\src\mudgetcategory.h" />
     <QtMoc Include="..\src\mudget.h" />
     <QtMoc Include="..\src\goal.h" />
@@ -139,6 +140,16 @@
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="..\src\mudget.ui" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\images\bronze.png" />
+    <Image Include="..\images\gold.png" />
+    <Image Include="..\images\Icon1.ico" />
+    <Image Include="..\images\silver.png" />
+    <Image Include="icon1.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="mudget.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

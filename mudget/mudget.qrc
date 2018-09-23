@@ -1,4 +1,8 @@
 <RCC>
-    <qresource prefix="mudget">
+    <qresource prefix="/mudget">
+        <file>Resources/bronze.png</file>
+        <file>Resources/gold.png</file>
+        <file>Resources/icon.png</file>
+        <file>Resources/silver.png</file>
     </qresource>
 </RCC>
