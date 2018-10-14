@@ -11,6 +11,28 @@
 #include <QStringList>
 #include <memory>
 
+#define GOLD_THRESHOLD		0.8
+#define SILVER_THRESHOLD	0.6
+#define BRONZE_THRESHOLD	0.2
+
+enum class GoalNeed {
+	SpendLess = 1,
+	MakeProfit = 2
+};
+
+enum class GoalTime {
+	Weekly = 1,
+	Monthly = 2,
+	Yearly = 3
+};
+
+enum class GoalTrophy {
+	None,
+	Bronze,
+	Silver,
+	Gold
+};
+
 class Goal : public QWidget {
 	Q_OBJECT
 	

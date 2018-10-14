@@ -641,7 +641,8 @@
     <property name="title">
      <string>Windows</string>
     </property>
-    <addaction name="actionDatabase"/>
+    <addaction name="actionHistory"/>
+    <addaction name="actionTrophies"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuOptions"/>
@@ -682,9 +683,14 @@
     <string>Calculations</string>
    </property>
   </action>
-  <action name="actionDatabase">
+  <action name="actionHistory">
    <property name="text">
-    <string>Database</string>
+    <string>History</string>
+   </property>
+  </action>
+  <action name="actionTrophies">
+   <property name="text">
+    <string>Trophies</string>
    </property>
   </action>
  </widget>

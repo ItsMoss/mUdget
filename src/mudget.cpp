@@ -31,7 +31,12 @@ mudget::mudget(QWidget *parent)
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(save()));
 	connect(ui.actionCalculations, SIGNAL(triggered()), this, SLOT(setCalculationSettings()));
 	connect(ui.actionCategories, SIGNAL(triggered()), this, SLOT(setCategories()));
-	connect(ui.actionDatabase, SIGNAL(triggered()), this, SLOT(openDatabaseWindow()));
+	QSignalMapper * dbMapper = new QSignalMapper;
+	connect(ui.actionHistory, SIGNAL(triggered()), dbMapper, SLOT(map()));
+	dbMapper->setMapping(ui.actionHistory, 1);
+	connect(ui.actionTrophies, SIGNAL(triggered()), dbMapper, SLOT(map()));
+	dbMapper->setMapping(ui.actionTrophies, 2);
+	connect(dbMapper, SIGNAL(mapped(int)), this, SLOT(openDatabaseWindow(int)));
 	connect(ui.monthComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 	connect(ui.yearComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 
@@ -238,7 +243,7 @@ void mudget::load(QString openFName) {
 }
 
 
-void mudget::openDatabaseWindow() {
+void mudget::openDatabaseWindow(int winType) {
 	INFO("user clicked to open database");
 	if (dbAvailable) {
 		dbView = 0;
@@ -247,7 +252,12 @@ void mudget::openDatabaseWindow() {
 		dbView->setStyleSheet(styleSheet());
 		dbModel = 0;
 		dbModel = std::make_unique<QSqlRelationalTableModel>();
-		dbModel->setTable("LAST3MONTHS");
+		if (winType == 1) {
+			dbModel->setTable(DB_TABLE_HISTORY);
+		}
+		else {
+			dbModel->setTable(DB_TABLE_TROPHIES);
+		}
 		dbModel->select();
 		if (dbModel->lastError().isValid()) {
 			ERROR("unable to open db window due to: " + dbModel->lastError().text().toStdString());
@@ -946,19 +956,51 @@ void mudget::award_trophies() {
 		}
 	}
 
+	GoalNeed needi;
+	int amount;
+	QString category;
+	QString tstamp;
+
 	// was last login last week?
 	if (nDays > daysSinceSunday && foundSunday) {
-
+		tstamp = melpers::getCurrentTime(-(daysSinceSunday + 1)).c_str();
+		// evaluate all weekly goals
+		for (Goal* g : goals) {
+			if (g->getTimeIndex() == (int)GoalTime::Weekly) {
+				needi = (GoalNeed)g->getNeedIndex();
+				amount = g->getAmount();
+				category = g->getCategoryText();
+				evaluate_weekly_goal(needi, amount, category, tstamp, false);
+			}
+		}
 	}
 
 	// was last login last month?
 	if (foundLastMonth) {
-
+		tstamp = melpers::getCurrentTime(-nDays).c_str();
+		// evaluate all monthly goals
+		for (Goal* g : goals) {
+			if (g->getTimeIndex() == (int)GoalTime::Monthly) {
+				needi = (GoalNeed)g->getNeedIndex();
+				amount = g->getAmount();
+				category = g->getCategoryText();
+				evaluate_monthly_goal(needi, amount, category, tstamp, false);
+			}
+		}
 	}
 
 	// was last login last year?
 	if (foundLastYear) {
-
+		tstamp = melpers::getCurrentTime(-nDays).c_str();
+		// evaluate all yearly goals
+		for (Goal* g : goals) {
+			if (g->getTimeIndex() == (int)GoalTime::Yearly) {
+				needi = (GoalNeed)g->getNeedIndex();
+				amount = g->getAmount();
+				category = g->getCategoryText();
+				evaluate_yearly_goal(needi, amount, category, tstamp, false);
+			}
+		}
 	}
 }
 
@@ -1087,6 +1129,7 @@ bool mudget::delete_old_db_records() {
 		DEBUG("successfully deleted old record(s)");
 		if (dbModel) {
 			// update db model
+			dbModel->setTable(DB_TABLE_HISTORY);
 			dbModel->select();
 		}
 	}
@@ -1176,7 +1219,7 @@ void mudget::init_database() {
 	}
 
 	// create table if it does not exist
-	if (db->record("LAST3MONTHS").isEmpty()) {
+	if (db->record(DB_TABLE_HISTORY).isEmpty()) {
 		QSqlQuery query;
 		query.exec("CREATE TABLE LAST3MONTHS (\
 					ID			INTEGER	PRIMARY KEY		AUTOINCREMENT, \
@@ -1196,6 +1239,28 @@ void mudget::init_database() {
 	}
 	else {
 		INFO("db table LAST3MONTHS already exists");
+	}
+
+
+	// create table if it does not exist
+	if (db->record(DB_TABLE_TROPHIES).isEmpty()) {
+		QSqlQuery query;
+		query.exec("CREATE TABLE TROPHIES (\
+					ID			INTEGER	PRIMARY KEY		AUTOINCREMENT, \
+					TYPE		INT		NOT NULL, \
+					TIMESTAMP	TEXT	NOT NULL, \
+					DESCRIPTION	TEXT	NOT NULL, \
+					WON			BOOL	NOT NULL, \
+					UNIQUE(TIMESTAMP, DESCRIPTION) \
+					);");
+		if (!query.isActive()) {
+			ERROR("unable to create db table TROPHIES due to: " + query.lastError().text().toStdString());
+			return;
+		}
+		INFO("created db table TROPHIES");
+	}
+	else {
+		INFO("db table TROPHIES already exists");
 	}
 
 	dbAvailable = true;
@@ -1242,6 +1307,56 @@ void mudget::init_display_case() {
 	// award any trophies earned since last login
 	award_trophies();
 
+	// update display case
+	int brz, sil, gld, tot;
+	brz = sil = gld = tot = 0;
+	if (dbAvailable) {
+		QSqlQuery query;
+		QString apo("'");
+		QString selectAll("SELECT TYPE, WON FROM TROPHIES;");
+		query.exec(selectAll);
+		if (query.isActive() && query.isSelect()) {
+			int type;
+			bool won;
+			while (query.next()) {
+				type = query.value(0).toInt();
+				won = query.value(1).toBool();
+				++tot;
+				if (won) {
+					switch ((GoalTrophy)type) {
+					case GoalTrophy::Bronze:
+						++brz;
+						break;
+					case GoalTrophy::Silver:
+						++sil;
+						break;
+					case GoalTrophy::Gold:
+						++gld;
+						break;
+					default:
+						WARN("Retrieved trophy record with invalid type");
+						return;
+					}
+				}
+			}
+		}
+		else {
+			WARN("failed to select trophy records due to: " + query.lastError().text().toStdString());
+			return;
+		}
+	}
+	else {
+		INFO("cannot update trophies because database is not available");
+		return;
+	}
+
+	// update labels
+	goldTrophies.second->setText(std::to_string(gld).c_str());
+	silverTrophies.second->setText(std::to_string(sil).c_str());
+	bronzeTrophies.second->setText(std::to_string(brz).c_str());
+
+	// TODO: use tot somewhere in display case
+
 	DEBUG("successfully initialized display case");
 }
 
@@ -1269,6 +1384,35 @@ void mudget::init_month_year_maps() {
 	monthDaysMap["10"] = 31;
 	monthDaysMap["11"] = 30;
 	monthDaysMap["12"] = 31;
+}
+
+
+void mudget::insert_trophy(GoalTrophy type, QString desc, QString t, bool won) {
+	int trophytype = (int)type;
+	DEBUG("inserting trophy record: " + std::to_string(trophytype) + " " + desc.toStdString()
+		+ " " + t.toStdString() + " " + std::to_string(won));
+
+	if (dbAvailable) {
+		QSqlQuery query;
+		QString apo("'");
+		QString insert("INSERT OR IGNORE INTO TROPHIES (TYPE, TIMESTAMP, DESCRIPTION, WON) ");
+		insert += "VALUES (" + QString(std::to_string(trophytype).c_str()) + ", '" + t + "', '" + desc + "', " + std::to_string(won).c_str() + ");";
+		query.exec(insert);
+		if (query.isActive()) {
+			DEBUG("successfully inserted trophy record");
+			if (dbModel) {
+				// update db model
+				dbModel->setTable(DB_TABLE_TROPHIES);
+				dbModel->select();
+			}
+		}
+		else {
+			WARN("failed to insert trophy record due to: " + query.lastError().text().toStdString());
+		}
+	}
+	else {
+		INFO("but database is not available");
+	}
 }
 
 
@@ -1517,7 +1661,7 @@ void mudget::update_category_calculations() {
 
 void mudget::update_goal_progress(Goal * g) {
 	// convert goal to its number counterpart via indexes/values
-	int needi = g->getNeedIndex();
+	GoalNeed needi = (GoalNeed)g->getNeedIndex();
 	int amount = g->getAmount();
 	QString category = g->getCategoryText();
 	int timei = g->getTimeIndex();
@@ -1529,17 +1673,17 @@ void mudget::update_goal_progress(Goal * g) {
 	ui.goalProgressLabel->hide();
 
 	// update based on time index
-	if (timei == 1) {
+	if (timei == (int)GoalTime::Weekly) {
 		// weekly - uses database
-		update_weekly_goal(needi, amount, category, tstamp);
+		evaluate_weekly_goal(needi, amount, category, tstamp, true);
 	}
-	else if (timei == 2) {
+	else if (timei == (int)GoalTime::Monthly) {
 		// monthly - uses corresponding file if saved
-		update_monthly_goal(needi, amount, category, tstamp);
+		evaluate_monthly_goal(needi, amount, category, tstamp, true);
 	}
-	else if (timei == 3) {
+	else if (timei == (int)GoalTime::Yearly) {
 		// yearly - uses all saved corresponding files
-		update_yearly_goal(needi, amount, category, tstamp);
+		evaluate_yearly_goal(needi, amount, category, tstamp, true);
 	}
 	else {
 		WARN("tried to update the progress of a goal with invalid time index");
@@ -1547,7 +1691,7 @@ void mudget::update_goal_progress(Goal * g) {
 }
 
 
-void mudget::update_monthly_goal(int needidx, int amount, QString category, QString tstamp) {
+void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString category, QString tstamp, bool update) {
 	// get correct .moss file
 	QString file2load;
 	QString m(tstamp.mid(4, 3));	// month
@@ -1555,7 +1699,7 @@ void mudget::update_monthly_goal(int needidx, int amount, QString category, QStr
 	QString mNum;					// month as number
 	for (auto it = monthMap.begin(); it != monthMap.end(); ++it) {
 		if (it->second == m) {
-			mNum = std::to_string(it->first).c_str();
+			mNum = std::to_string(it->first + 1).c_str();
 			if (mNum.size() == 1) {
 				mNum = "0" + mNum;
 			}
@@ -1573,10 +1717,10 @@ void mudget::update_monthly_goal(int needidx, int amount, QString category, QStr
 		if (dirIt.fileName() == file2load) {
 			load(dirIt.filePath());
 			if (category == "everything") {
-				if (needidx == 1) {
+				if (needidx == GoalNeed::SpendLess) {
 					sum = calculate_expenses(true, true);
 				}
-				else if (needidx == 2) {
+				else if (needidx == GoalNeed::MakeProfit) {
 					sum = calculate_income() - calculate_expenses(true, true);
 				}
 			}
@@ -1598,45 +1742,87 @@ void mudget::update_monthly_goal(int needidx, int amount, QString category, QStr
 	}
 
 	// calculate sum and compare with amount based on needidx to see goal progress
+	int numerator, denominator;
 	switch (needidx) {
-	case 1:	// spend less than
-		goalbar->update(amount, amount - sum);
+	case GoalNeed::SpendLess:
+		numerator = amount - sum;
+		denominator = amount;
 		break;
-	case 2:	// make profit
-		goalbar->update(amount, sum);
+	case GoalNeed::MakeProfit:
+		numerator = sum - amount;
+		denominator = amount;
 		break;
 	default:
 		ERROR("Attempted to use unknown need index to update monthly goal");
 		return;
 	}
 
+	// update progress bar or award trophy
+	if (update) {
+		goalbar->update(denominator, numerator);
+	}
+	else {
+		bool earnedTrophy = true;	// default to earning trophy
+		float pct = (float)numerator / denominator;
+		GoalTrophy type;
+
+		if (pct > GOLD_THRESHOLD) {
+			type = GoalTrophy::Gold;
+		}
+		else if (pct > SILVER_THRESHOLD) {
+			type = GoalTrophy::Silver;
+		}
+		else if (pct > BRONZE_THRESHOLD) {
+			type = GoalTrophy::Bronze;
+		}
+		else {
+			type = GoalTrophy::None;
+			earnedTrophy = false;
+		}
+
+		// create description
+		QString desc("I need to ");
+		if (needidx == GoalNeed::SpendLess) {
+			desc += "spend less than $";
+		}
+		else {
+			desc += "make a profit of $";
+		}
+		desc += std::to_string(amount).c_str();
+		desc += " on ";
+		desc += category;
+		desc += " monthly.";
+
+		insert_trophy(type, desc, tstamp, earnedTrophy);
+	}
+
 	delete_temp();
 }
 
 
-void mudget::update_weekly_goal(int needidx, int amount, QString category, QString tstamp) {
+void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category, QString tstamp, bool update) {
 	// use tstamp to get all days this week that have passed
 	int nDays;
 	if (tstamp.contains("Sun")) {
-		nDays = 7;
+		nDays = 1;
 	}
 	else if (tstamp.contains("Sat")) {
-		nDays = 6;
+		nDays = 7;
 	}
 	else if (tstamp.contains("Fri")) {
-		nDays = 5;
+		nDays = 6;
 	}
 	else if (tstamp.contains("Thu")) {
-		nDays = 4;
+		nDays = 5;
 	}
 	else if (tstamp.contains("Wed")) {
-		nDays = 3;
+		nDays = 4;
 	}
 	else if (tstamp.contains("Tue")) {
-		nDays = 2;
+		nDays = 3;
 	}
 	else {	// "Mon"
-		nDays = 1;
+		nDays = 2;
 	}
 	QStringList daysThisWeek;
 	for (int n = 0; n < nDays; ++n) {
@@ -1708,21 +1894,63 @@ void mudget::update_weekly_goal(int needidx, int amount, QString category, QStri
 	if (monthIdx.size() == 1) {
 		monthIdx = "0" + monthIdx;
 	}
+	int numerator, denominator;
 	switch (needidx) {
-	case 1:	// spend less than
-		goalbar->update(amount, amount - sum);
+	case GoalNeed::SpendLess:
+		numerator = amount - sum;
+		denominator = amount;
 		break;
-	case 2:	// make profit
-		goalbar->update(amount, (calculate_income(false) / (float)monthDaysMap[monthIdx] * 7) - sum);
+	case GoalNeed::MakeProfit:	// TODO: calculate correct income rather than always using current loaded month income
+		denominator = amount;
+		numerator = (calculate_income(false) / (float)monthDaysMap[monthIdx] * 7) - sum - amount;
 		break;
 	default:
 		ERROR("Attempted to use unknown need index to update weekly goal");
 		return;
 	}
+
+	// update progress bar or award trophy
+	if (update) {
+		goalbar->update(denominator, numerator);
+	}
+	else {
+		bool earnedTrophy = true;	// default to earning trophy
+		float pct = (float)numerator / denominator;
+		GoalTrophy type;
+
+		if (pct > GOLD_THRESHOLD) {
+			type = GoalTrophy::Gold;
+		}
+		else if (pct > SILVER_THRESHOLD) {
+			type = GoalTrophy::Silver;
+		}
+		else if (pct > BRONZE_THRESHOLD) {
+			type = GoalTrophy::Bronze;
+		}
+		else {
+			type = GoalTrophy::None;
+			earnedTrophy = false;
+		}
+
+		// create description
+		QString desc("I need to ");
+		if (needidx == GoalNeed::SpendLess) {
+			desc += "spend less than $";
+		}
+		else {
+			desc += "make a profit of $";
+		}
+		desc += std::to_string(amount).c_str();
+		desc += " on ";
+		desc += category;
+		desc += " weekly.";
+
+		insert_trophy(type, desc, tstamp, earnedTrophy);
+	}
 }
 
 
-void mudget::update_yearly_goal(int needidx, int amount, QString category, QString tstamp) {
+void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category, QString tstamp, bool update) {
 	// get correct .moss files
 	QString fileEnd;
 	QString y(tstamp.right(4));		// year
@@ -1737,10 +1965,10 @@ void mudget::update_yearly_goal(int needidx, int amount, QString category, QStri
 		if (dirIt.fileName().endsWith(fileEnd)) {
 			load(dirIt.filePath());
 			if (category == "everything") {
-				if (needidx == 1) {
+				if (needidx == GoalNeed::SpendLess) {
 					sum += calculate_expenses(true, true);
 				}
-				else if (needidx == 2) {
+				else if (needidx == GoalNeed::MakeProfit) {
 					sum += calculate_income() - calculate_expenses(true, true);
 				}
 			}
@@ -1761,16 +1989,58 @@ void mudget::update_yearly_goal(int needidx, int amount, QString category, QStri
 	}
 
 	// calculate sum and compare with amount based on needidx to see goal progress
+	int numerator, denominator;
 	switch (needidx) {
-	case 1:	// spend less than
-		goalbar->update(amount, amount - sum);
+	case GoalNeed::SpendLess:
+		denominator = amount;
+		numerator = amount - sum;
 		break;
-	case 2:	// make profit
-		goalbar->update(amount, sum);
+	case GoalNeed::MakeProfit:
+		denominator = amount;
+		numerator = sum - amount;
 		break;
 	default:
 		ERROR("Attempted to use unknown need index to update yearly goal");
 		return;
+	}
+
+	// update progress bar or award trophy
+	if (update) {
+		goalbar->update(denominator, numerator);
+	}
+	else {
+		bool earnedTrophy = true;	// default to earning trophy
+		float pct = (float)numerator / denominator;
+		GoalTrophy type;
+
+		if (pct > GOLD_THRESHOLD) {
+			type = GoalTrophy::Gold;
+		}
+		else if (pct > SILVER_THRESHOLD) {
+			type = GoalTrophy::Silver;
+		}
+		else if (pct > BRONZE_THRESHOLD) {
+			type = GoalTrophy::Bronze;
+		}
+		else {
+			type = GoalTrophy::None;
+			earnedTrophy = false;
+		}
+
+		// create description
+		QString desc("I need to ");
+		if (needidx == GoalNeed::SpendLess) {
+			desc += "spend less than $";
+		}
+		else {
+			desc += "make a profit of $";
+		}
+		desc += std::to_string(amount).c_str();
+		desc += " on ";
+		desc += category;
+		desc += " yearly.";
+
+		insert_trophy(type, desc, tstamp, earnedTrophy);
 	}
 
 	delete_temp();

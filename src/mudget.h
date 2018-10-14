@@ -30,6 +30,8 @@
 #define MOSS_FILE_EXT		".moss"
 #define SETTINGS_FILE_NAME	"settings.mxt"
 #define DATABASE_FILE_NAME	"safe.db"
+#define DB_TABLE_HISTORY	"LAST3MONTHS"
+#define DB_TABLE_TROPHIES	"TROPHIES"
 
 class mudget : public QMainWindow
 {
@@ -71,9 +73,10 @@ public slots:
 	void addMudgetCategory();								// adds a new expense category to display
 	void calculateGoalProgress();							// runs every 5 sec to display progress of each goal
 	void load(QString openFName = "");						// loads in a .moss file (i.e. a month's financial data)
-	void openDatabaseWindow();								// displayes db view
+	void openDatabaseWindow(int);							// displayes db view
 	void performWantedCalculation();						// performs one of many calculations user has requested
-	void receiveRecord(QString exp, double amount, QString cat, int n, QString t);	// receives newley created record info to insert in db
+	void receiveRecord(QString exp, double amount,			// receives newly created record info to insert in db
+		QString cat, int n, QString t);
 	void save();											// save .moss file
 	void setCalculationSettings();							// sets which months and categories should be used in calculations
 	void setCategories();									// sets which categories are availble for expense categories
@@ -97,19 +100,25 @@ private:
 	void delete_all();												// deallocates everything
 	bool delete_old_db_records();									// removes db records older than 3 months ago
 	void delete_temp();												// deallocates tempExpenses and tempIncome
-	int display_message(const QString & msg, bool question = false);	// displayes message to user
-	void find_matching_expenses(std::vector<mudgetCategory*> & matches, QString catname, bool temp=true);	// finds all expenses under specified category in current month
+	int display_message(const QString & msg, bool question=false);	// displayes message to user
+	void evaluate_monthly_goal(GoalNeed needidx, int amount,		// updates progress for monthly goal
+		QString category, QString tstamp, bool update);
+	void evaluate_weekly_goal(GoalNeed needidx, int amount,			// updates progress for weekly goal
+		QString category, QString tstamp, bool update);
+	void evaluate_yearly_goal(GoalNeed needidx, int amount,			// updates progress for yearly goal
+		QString category, QString tstamp, bool update);
+	void find_matching_expenses(std::vector<mudgetCategory*> & matches,	// finds all expenses under specified category in current month
+		QString catname, bool temp=true);
 	void init_database();											// init db
 	void init_display_case();										// inits display case on Goals tab
 	void init_month_year_maps();									// init maps for month and year
+	void insert_trophy(GoalTrophy type, QString desc, QString t,	// inserts trophy record in db
+		bool won);
 	bool load_settings();											// load auto-saved settings
 	std::string remove_newline(std::string & str);					// remove newline character
 	void update_calculation_combo();								// updates calculation combo to match all categories in categoryMap
 	void update_categories();										// updates categoryMap after setting categories
 	void update_category_calculations();							// updates categoryCalculateMap after setting categories
 	void update_goal_progress(Goal * g);							// updates progress of specified goal
-	void update_monthly_goal(int needidx, int amount, QString category, QString tstamp);	// updates progress for monthly goal
-	void update_weekly_goal(int needidx, int amount, QString category, QString tstamp);		// updates progress for weekly goal
-	void update_yearly_goal(int needidx, int amount, QString category, QString tstamp);		// updates progress for yearly goal
 	void update_profit();											// updates profit
 };
