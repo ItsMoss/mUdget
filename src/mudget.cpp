@@ -1768,12 +1768,15 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 
 		if (pct > GOLD_THRESHOLD) {
 			type = GoalTrophy::Gold;
+			display_message("You earned a Gold (monthly) trophy!");
 		}
 		else if (pct > SILVER_THRESHOLD) {
 			type = GoalTrophy::Silver;
+			display_message("You earned a Silver (monthly) trophy!");
 		}
 		else if (pct > BRONZE_THRESHOLD) {
 			type = GoalTrophy::Bronze;
+			display_message("You earned a Bronze (monthly) trophy!");
 		}
 		else {
 			type = GoalTrophy::None;
@@ -1920,12 +1923,15 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 
 		if (pct > GOLD_THRESHOLD) {
 			type = GoalTrophy::Gold;
+			display_message("You earned a Gold (weekly) trophy!");
 		}
 		else if (pct > SILVER_THRESHOLD) {
 			type = GoalTrophy::Silver;
+			display_message("You earned a Silver (weekly) trophy!");
 		}
 		else if (pct > BRONZE_THRESHOLD) {
 			type = GoalTrophy::Bronze;
+			display_message("You earned a Bronze (weekly) trophy!");
 		}
 		else {
 			type = GoalTrophy::None;
@@ -2015,12 +2021,15 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 
 		if (pct > GOLD_THRESHOLD) {
 			type = GoalTrophy::Gold;
+			display_message("You earned a Gold (yearly) trophy!");
 		}
 		else if (pct > SILVER_THRESHOLD) {
 			type = GoalTrophy::Silver;
+			display_message("You earned a Silver (yearly) trophy!");
 		}
 		else if (pct > BRONZE_THRESHOLD) {
 			type = GoalTrophy::Bronze;
+			display_message("You earned a Bronze (yearly) trophy!");
 		}
 		else {
 			type = GoalTrophy::None;
