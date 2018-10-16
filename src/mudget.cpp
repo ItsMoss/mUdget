@@ -1303,6 +1303,9 @@ void mudget::init_display_case() {
 
 	ui.displayCaseLayout->addWidget(bronzeTrophies.first.get(), 0, col, Qt::AlignCenter);
 	ui.displayCaseLayout->addWidget(bronzeTrophies.second.get(), 1, col++, Qt::AlignCenter);
+	// out of X trophies label
+	possibleTrophyCountLabel = std::make_unique<QLabel>();
+	ui.displayCaseLayout->addWidget(possibleTrophyCountLabel.get(), 2, 0, 1, 3, Qt::AlignCenter);
 
 	// award any trophies earned since last login
 	award_trophies();
@@ -1354,8 +1357,11 @@ void mudget::init_display_case() {
 	goldTrophies.second->setText(std::to_string(gld).c_str());
 	silverTrophies.second->setText(std::to_string(sil).c_str());
 	bronzeTrophies.second->setText(std::to_string(brz).c_str());
-
-	// TODO: use tot somewhere in display case
+	QString trophyCountString("out of ");
+	trophyCountString += std::to_string(tot).c_str();
+	trophyCountString += " trophies";
+	possibleTrophyCountLabel->setText(trophyCountString);
+	possibleTrophyCountLabel->setStyleSheet("font-family: Verdana; font-size: 14pt;");
 
 	DEBUG("successfully initialized display case");
 }

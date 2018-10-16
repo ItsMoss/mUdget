@@ -59,6 +59,7 @@ class mudget : public QMainWindow
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > goldTrophies;		// gold trophies won (pic and total)
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > silverTrophies;	// silver trophies won (pic and total)
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > bronzeTrophies;	// bronze trophies won (pic and total)
+	std::unique_ptr<QLabel> possibleTrophyCountLabel;		// label that displays total possible trophies
 	// database
 	std::unique_ptr<QSqlDatabase> db;						// db connection
 	bool dbAvailable;										// does a db connection exist
