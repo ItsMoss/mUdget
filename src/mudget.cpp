@@ -1716,7 +1716,7 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 
 	// find and laod it
 	bool success = false;
-	double sum = 0;
+	float sum = 0;
 	QDirIterator dirIt(SAVE_LOAD_DIRECTORY);
 	while (dirIt.hasNext()) {
 		dirIt.next();
@@ -1748,7 +1748,7 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 	}
 
 	// calculate sum and compare with amount based on needidx to see goal progress
-	int numerator, denominator;
+	float numerator, denominator;
 	switch (needidx) {
 	case GoalNeed::SpendLess:
 		numerator = amount - sum;
@@ -1769,7 +1769,7 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 	}
 	else {
 		bool earnedTrophy = true;	// default to earning trophy
-		float pct = (float)numerator / denominator;
+		float pct = numerator / denominator;
 		GoalTrophy type;
 
 		if (pct > GOLD_THRESHOLD) {
@@ -1833,8 +1833,13 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 	else {	// "Mon"
 		nDays = 2;
 	}
+	// make sure to base days this week of of tstamp
+	int dOffset = 0;
+	while (melpers::getCurrentTime(-dOffset).c_str() != tstamp) {
+		dOffset++;
+	}
 	QStringList daysThisWeek;
-	for (int n = 0; n < nDays; ++n) {
+	for (int n = dOffset; n < dOffset + nDays; ++n) {
 		daysThisWeek << melpers::getCurrentTime(-n).c_str();
 	}
 	// determine the category C of interest via categoryidx
@@ -1877,12 +1882,12 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 	}
 	selectSum.replace(selectSum.size() - 2, 2, ")");	// replace last ", " with closing parenthesis
 	selectSum += " AND CATEGORY IN " + category2select;
-	
+
 	query.exec(selectSum);
-	int sum;
+	float sum;
 	if (query.isActive() && query.isSelect()) {
 		if (query.next()) {
-			sum = query.value(0).toInt();
+			sum = query.value(0).toFloat();
 		}
 		else {
 			QString errorstring("unable to select amount sum due to: ");
@@ -1903,7 +1908,7 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 	if (monthIdx.size() == 1) {
 		monthIdx = "0" + monthIdx;
 	}
-	int numerator, denominator;
+	float numerator, denominator;
 	switch (needidx) {
 	case GoalNeed::SpendLess:
 		numerator = amount - sum;
@@ -1924,7 +1929,7 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 	}
 	else {
 		bool earnedTrophy = true;	// default to earning trophy
-		float pct = (float)numerator / denominator;
+		float pct = numerator / denominator;
 		GoalTrophy type;
 
 		if (pct > GOLD_THRESHOLD) {
@@ -1970,7 +1975,7 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 
 	// find and laod it
 	bool success = false;
-	double sum = 0;
+	float sum = 0;
 	QDirIterator dirIt(SAVE_LOAD_DIRECTORY);
 	while (dirIt.hasNext()) {
 		dirIt.next();
@@ -2001,7 +2006,7 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 	}
 
 	// calculate sum and compare with amount based on needidx to see goal progress
-	int numerator, denominator;
+	float numerator, denominator;
 	switch (needidx) {
 	case GoalNeed::SpendLess:
 		denominator = amount;
@@ -2022,7 +2027,7 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 	}
 	else {
 		bool earnedTrophy = true;	// default to earning trophy
-		float pct = (float)numerator / denominator;
+		float pct = numerator / denominator;
 		GoalTrophy type;
 
 		if (pct > GOLD_THRESHOLD) {
