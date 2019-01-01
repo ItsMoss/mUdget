@@ -45,6 +45,11 @@ class Goal : public QWidget {
 	QPushButton deleteButton;				// button to delete goal
 	QHBoxLayout hLayout;					// layout
 	bool locked;							// can goal be modified (cannot if locked)
+	double ytdNet;							/* year-to-date net amount for goal
+											   Ex: if goal is to spend less than $50/week on X, then
+											       this is the value of difference b/w $50 * n weeks this year
+												   and actual $ amount spent on X this year */
+	std::map<GoalTrophy, size_t> ytdTrophies;	// year-to-date trophy counts for this goal
 
 public:
 	Goal(std::map<int, QString> & map);		// constructor 1
@@ -63,6 +68,11 @@ public:
 	std::string save();						// returns goal as a string (when saving on app close)
 	void setLock(bool lck);					// set variable locked
 	void update_category();					// updates variable categoryMap
+	void setYtdNet(double net);				// set variable ytdNet
+	void setYtdTrophies(std::map<GoalTrophy, size_t> trophies);		// set variable ytdTrophies
+	void setYtdTrophies(int gold, int silver, int bronze, int failed);		// set variable ytdTrophies
+	double getYtdNet() const;				// returns ytdNet
+	std::map<GoalTrophy, size_t> getYtdTrophies() const;	// returns ytdTrophies
 
 private:
 	std::string remove_newline(std::string & str);		// removes newline char from string

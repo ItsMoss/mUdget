@@ -39,7 +39,7 @@ class mudget : public QMainWindow
 
 	Ui::mudgetClass ui;										// ui
 	// main tab
-	std::string lastLoginTime;								// timestamp of last login
+	std::string loginTime, lastLoginTime;					// timestamp of current and last login
 	mudgetCategory* uiIncome;								// income category (displayed)
 	std::vector<mudgetCategory*> expenses;					// all expense categories (displayed)
 	std::vector<mudgetCategory*> tempExpenses;				// all expense categories for month(s) loaded while doing various calculations (not displayed)
@@ -56,6 +56,9 @@ class mudget : public QMainWindow
 	std::unique_ptr<QTimer> goalTimer;						// timer to start showing goal(s) progress
 	std::unique_ptr<GoalBar> goalbar;						// progress bar for goal currently being displayed
 	std::unique_ptr<QLabel> goalStringLabel;				// label displaying current goal whose progress is being displayed
+	std::map<QString, std::unique_ptr<QLabel> > progressFrameHeadings;				// maps string to corresponding heading label within progress frame
+	std::map<QString, std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > > progressFrameTrophyCts;			// trophy counts for current goal whose progress is being displayed
+	std::unique_ptr<QLabel> ytdNetValueLabel;				// year-to-date net amount for goal whose progress is being displayed
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > goldTrophies;		// gold trophies won (pic and total)
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > silverTrophies;	// silver trophies won (pic and total)
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > bronzeTrophies;	// bronze trophies won (pic and total)
@@ -113,10 +116,12 @@ private:
 	void init_database();											// init db
 	void init_display_case();										// inits display case on Goals tab
 	void init_month_year_maps();									// init maps for month and year
+	void init_progress_frame();										// inits progress frame on Goals tab
 	void insert_trophy(GoalTrophy type, QString desc, QString t,	// inserts trophy record in db
-		bool won);
+		bool won, float margin);
 	bool load_settings();											// load auto-saved settings
 	std::string remove_newline(std::string & str);					// remove newline character
+	void setYear2Dates4Goal(Goal * g);								// sets ytdNet and ytdTrophies for a Goal
 	void update_calculation_combo();								// updates calculation combo to match all categories in categoryMap
 	void update_categories();										// updates categoryMap after setting categories
 	void update_category_calculations();							// updates categoryCalculateMap after setting categories

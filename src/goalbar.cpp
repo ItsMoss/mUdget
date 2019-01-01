@@ -8,7 +8,7 @@ GoalBar::GoalBar(QWidget * parent) : QProgressBar(parent) {
 	percent2Color[0.6] = progressBarStyle + "background-color: #ADFF2F;}";
 	percent2Color[0.8] = progressBarStyle + "background-color: #00FF00;}";
 	update(100, 100);
-	setFixedSize(400, 70);
+	setFixedSize(500, 70);
 	setFormat("$%v");
 	QFont f;
 	f.setBold(true);

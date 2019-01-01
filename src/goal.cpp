@@ -1,7 +1,7 @@
 #include "goal.h"
 
 
-Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false) {
+Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false), ytdNet(0) {
 	/*I need to "spend less than " "000000.00" "on everything"	"weekly " .
 		                                       "on <category>"	"monthly"
 		        "make a profit of"			   "             "	"yearly "*/
@@ -33,9 +33,15 @@ Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false) {
 	deleteButton.hide();
 	setLayout(&hLayout);
 	show();
+
+	// year-to-date
+	ytdTrophies[GoalTrophy::None] = 0;
+	ytdTrophies[GoalTrophy::Bronze] = 0;
+	ytdTrophies[GoalTrophy::Silver] = 0;
+	ytdTrophies[GoalTrophy::Gold] = 0;
 }
 
-Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat, int timeIndex) : categoryMap(map), locked(false) {
+Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat, int timeIndex) : categoryMap(map), locked(false), ytdNet(0) {
 	label.setText("I need to ");
 	hLayout.addWidget(&label);
 	QStringList needList;
@@ -71,6 +77,12 @@ Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat,
 	time.setCurrentIndex(timeIndex);
 
 	show();
+
+	// year-to-date
+	ytdTrophies[GoalTrophy::None] = 0;
+	ytdTrophies[GoalTrophy::Bronze] = 0;
+	ytdTrophies[GoalTrophy::Silver] = 0;
+	ytdTrophies[GoalTrophy::Gold] = 0;
 }
 
 Goal::~Goal() {
@@ -111,6 +123,14 @@ QString Goal::getTimeText() const {
 
 int Goal::getTimeIndex() const {
 	return time.currentIndex();
+}
+
+double Goal::getYtdNet() const {
+	return ytdNet;
+}
+
+std::map<GoalTrophy, size_t> Goal::getYtdTrophies() const {
+	return ytdTrophies;
 }
 
 bool Goal::load(std::string line) {
@@ -193,6 +213,21 @@ void Goal::setLock(bool lck) {
 	amount.setEnabled(!lck);
 	category.setEnabled(!lck);
 	time.setEnabled(!lck);
+}
+
+void Goal::setYtdNet(double net) {
+	ytdNet = net;
+}
+
+void Goal::setYtdTrophies(std::map<GoalTrophy, size_t> trophies) {
+	ytdTrophies = trophies;
+}
+
+void Goal::setYtdTrophies(int gold, int silver, int bronze, int failed) {
+	ytdTrophies[GoalTrophy::Gold] = gold;
+	ytdTrophies[GoalTrophy::Silver] = silver;
+	ytdTrophies[GoalTrophy::Bronze] = bronze;
+	ytdTrophies[GoalTrophy::None] = failed;
 }
 
 void Goal::update_category() {

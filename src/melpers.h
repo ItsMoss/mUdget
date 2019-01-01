@@ -3,10 +3,13 @@
 
 #include <string>
 #include <time.h>
+#include <qcombobox.h>
+#include <qstring.h>
 
 namespace melpers {
 
-	std::string getCurrentTime(int dayOffset=0, bool verbose=false);
+	std::string getCurrentTime(int dayOffset=0, bool verbose=false);	// get current time
+	bool comboBoxContains(QComboBox * combo, QString txt);				// check if a combo box contains an item
 
 }
 

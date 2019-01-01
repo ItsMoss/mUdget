@@ -11,12 +11,16 @@ mudget::mudget(QWidget *parent)
 	setStyleSheet(sheet2set);
 	stylesheet.close();
 
+	// must set this before init_settings()
+	loginTime = melpers::getCurrentTime(0, true);
+
 	// bootup initializations
 	// create folder (if does not exist)
 	if (!QDir(SAVE_LOAD_DIRECTORY).exists()) {
 		QDir().mkdir(SAVE_LOAD_DIRECTORY);
 	}
-	init_month_year_maps();		// must init months before loading settings right now!
+	init_month_year_maps();		// must init months AND db before loading settings right now!
+	init_database();
 	load_settings();
 	skipSlot = true;
 	update_calculation_combo();
@@ -24,7 +28,7 @@ mudget::mudget(QWidget *parent)
 	create_income_category();
 	tempIncome = 0;
 	clean_up_ui();
-	init_database();
+	init_progress_frame();
 	init_display_case();
 
 	// signal slot connections
@@ -39,19 +43,6 @@ mudget::mudget(QWidget *parent)
 	connect(dbMapper, SIGNAL(mapped(int)), this, SLOT(openDatabaseWindow(int)));
 	connect(ui.monthComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
 	connect(ui.yearComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updateCurrentMonthYear(int)));
-
-	// goals
-	goalbar = std::make_unique<GoalBar>();
-	goalStringLabel = std::make_unique<QLabel>();
-	ui.progressFrameLayout->addWidget(goalStringLabel.get(), 0, 1, 1, 1, Qt::AlignCenter);
-	ui.progressFrameLayout->addWidget(goalbar.get(), 1, 1, 1, 1, Qt::AlignCenter);
-	goalStringLabel->hide();
-	goalbar->hide();
-	goalTimer = std::make_unique<QTimer>();
-	goalTimer->setSingleShot(false);
-	goalTimer->setInterval(5000);
-	connect(goalTimer.get(), SIGNAL(timeout()), this, SLOT(calculateGoalProgress()));
-	goalTimer->start();
 
 	skipSlot = false;
 	INFO("mUdget constructed");
@@ -873,7 +864,7 @@ bool mudget::auto_save_settings() {
 	const std::string goalsStr("Goals\n");
 	file2save.open(QIODevice::WriteOnly);
 	// Timestamp
-	file2save.write(melpers::getCurrentTime(0, true).c_str());
+	file2save.write(loginTime.c_str());
 	file2save.write("\n\n");
 	// Categories
 	file2save.write(categories.c_str());
@@ -1251,6 +1242,7 @@ void mudget::init_database() {
 					TIMESTAMP	TEXT	NOT NULL, \
 					DESCRIPTION	TEXT	NOT NULL, \
 					WON			BOOL	NOT NULL, \
+					MARGIN		MONEY			, \
 					UNIQUE(TIMESTAMP, DESCRIPTION) \
 					);");
 		if (!query.isActive()) {
@@ -1261,6 +1253,14 @@ void mudget::init_database() {
 	}
 	else {
 		INFO("db table TROPHIES already exists");
+		/*
+		QString addMargin("ALTER TABLE TROPHIES ADD MARGIN MONEY;");
+		QSqlQuery query;
+		query.exec(addMargin);
+		if (query.isActive()) {
+			DEBUG("successfully created margin column in trophies table!!!");
+		}
+		*/
 	}
 
 	dbAvailable = true;
@@ -1393,16 +1393,72 @@ void mudget::init_month_year_maps() {
 }
 
 
-void mudget::insert_trophy(GoalTrophy type, QString desc, QString t, bool won) {
+void mudget::init_progress_frame() {
+	INFO("initializing progress frame");
+	/* Should look something like this:
+	----------------------------------------------
+	|		  I need to [insert goal here]		 |
+	|		Current	____	YTD Net		YTD Count|
+	| |/////////////    |	$xx.xx		Gold   x |
+	| |/////$xx/////    |				Silver x |
+	| |/////////////____|				Bronze x |
+	|									Failed x |
+	----------------------------------------------
+	*/
+	const QString current("Current"), ytdNet("YTD Net"), ytdTrophyCount("YTD Trophies");
+	const QString gold("Gold"), silver("Silver"), bronze("Bronze"), failed("Failed");
+	progressFrameHeadings[current] = std::make_unique<QLabel>(current);
+	progressFrameHeadings[ytdNet] = std::make_unique<QLabel>(ytdNet);
+	progressFrameHeadings[ytdTrophyCount] = std::make_unique<QLabel>(ytdTrophyCount);
+	progressFrameTrophyCts[gold] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(gold), std::make_unique<QLabel>());
+	progressFrameTrophyCts[gold].first->setStyleSheet("color: rgb(212, 175, 55);");		// gold
+	progressFrameTrophyCts[silver] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(silver), std::make_unique<QLabel>());
+	progressFrameTrophyCts[silver].first->setStyleSheet("color: rgb(192, 192, 192);");	// silver
+	progressFrameTrophyCts[bronze] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(bronze), std::make_unique<QLabel>());
+	progressFrameTrophyCts[bronze].first->setStyleSheet("color: rgb(205, 127, 50);");	// bronze
+	progressFrameTrophyCts[failed] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(failed), std::make_unique<QLabel>());
+	progressFrameTrophyCts[failed].first->setStyleSheet("color: rgb(255, 0, 0);");		// red
+	ytdNetValueLabel = std::make_unique<QLabel>();
+	goalbar = std::make_unique<GoalBar>();
+	goalStringLabel = std::make_unique<QLabel>();
+	QFont font;
+	font.setBold(true);
+	font.setPointSize(14);
+	goalStringLabel->setFont(font);
+	ui.progressFrameLayout->addWidget(goalStringLabel.get(), 0, 1, 1, 5, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(progressFrameHeadings[current].get(), 1, 1, 1, 3, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(progressFrameHeadings[ytdNet].get(), 1, 4, 1, 1, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(progressFrameHeadings[ytdTrophyCount].get(), 1, 5, 1, 2, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(goalbar.get(), 2, 1, 4, 3, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(ytdNetValueLabel.get(), 2, 4, 4, 1, Qt::AlignCenter);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[gold].first.get(), 2, 5);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[gold].second.get(), 2, 6);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[silver].first.get(), 3, 5);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[silver].second.get(), 3, 6);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[bronze].first.get(), 4, 5);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[bronze].second.get(), 4, 6);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[failed].first.get(), 5, 5);
+	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[failed].second.get(), 5, 6);
+	goalStringLabel->hide();
+	goalbar->hide();
+	goalTimer = std::make_unique<QTimer>();
+	goalTimer->setSingleShot(false);
+	goalTimer->setInterval(5000);
+	connect(goalTimer.get(), SIGNAL(timeout()), this, SLOT(calculateGoalProgress()));
+	goalTimer->start();
+}
+
+
+void mudget::insert_trophy(GoalTrophy type, QString desc, QString t, bool won, float margin) {
 	int trophytype = (int)type;
 	DEBUG("inserting trophy record: " + std::to_string(trophytype) + " " + desc.toStdString()
-		+ " " + t.toStdString() + " " + std::to_string(won));
+		+ " " + t.toStdString() + " " + std::to_string(won) + " " + std::to_string(margin));
 
 	if (dbAvailable) {
 		QSqlQuery query;
 		QString apo("'");
-		QString insert("INSERT OR IGNORE INTO TROPHIES (TYPE, TIMESTAMP, DESCRIPTION, WON) ");
-		insert += "VALUES (" + QString(std::to_string(trophytype).c_str()) + ", '" + t + "', '" + desc + "', " + std::to_string(won).c_str() + ");";
+		QString insert("INSERT OR IGNORE INTO TROPHIES (TYPE, TIMESTAMP, DESCRIPTION, WON, MARGIN) ");
+		insert += "VALUES (" + QString(std::to_string(trophytype).c_str()) + ", '" + t + "', '" + desc + "', " + std::to_string(won).c_str() + ", " + std::to_string(margin).c_str() + ");";
 		query.exec(insert);
 		if (query.isActive()) {
 			DEBUG("successfully inserted trophy record");
@@ -1565,6 +1621,18 @@ bool mudget::load_settings() {
 		if (currMo) {
 			ui.monthComboBox->setCurrentIndex(currMo - 1);
 		}
+		// *** go ahead and set Year here as well ***
+		QString currYr = loginTime.substr(loginTime.length() - 4, 4).c_str();
+		if (melpers::comboBoxContains(ui.yearComboBox, currYr)) {
+			DEBUG("year already included");
+			ui.yearComboBox->setCurrentText(currYr);
+		}
+		else {
+			DEBUG("adding new year to combo box");
+			ui.yearComboBox->addItem(currYr);
+			ui.yearComboBox->setCurrentText(currYr);
+		}
+
 		// Goals
 		clear_goals();
 		line = remove_newline(file2load.readLine().toStdString());
@@ -1594,7 +1662,9 @@ bool mudget::load_settings() {
 			ui.createGoalButton->hide();
 			ui.goalsVerticalLayout->addWidget(goals.back());
 			goals.back()->setLock(true);
+			setYear2Dates4Goal(goals.back());
 		}
+		// add line to create new goal if goals already exist
 		if (ui.createGoalButton->isHidden()) {
 			goals.push_back(new Goal(categoryMap));
 			ui.goalsVerticalLayout->addWidget(goals.back());
@@ -1614,6 +1684,59 @@ std::string mudget::remove_newline(std::string & str) {
 	}
 	else {
 		return str;
+	}
+}
+
+void mudget::setYear2Dates4Goal(Goal * g) {
+	// db must be initialized for this to work
+	if (dbAvailable) {
+		INFO("setting year to dates for goal");
+		QString desc2select = g->save().c_str();
+		// select all trophies with this goal's description
+		QString apo("'");
+		QString selectTrophies("SELECT TYPE, MARGIN FROM TROPHIES WHERE DESCRIPTION IN (");
+		selectTrophies += apo;
+		selectTrophies += desc2select;
+		selectTrophies += "');";
+
+		QSqlQuery query;
+		query.exec(selectTrophies);
+		if (query.isActive() && query.isSelect()) {
+			int type;
+			double margin = 0;
+			// trophy counts
+			size_t brz = 0, sil = 0, gld = 0, fld = 0;
+			while (query.next()) {
+				type = query.value(0).toInt();
+				margin += query.value(1).toDouble();
+				switch ((GoalTrophy)type) {
+				case GoalTrophy::Bronze:
+					++brz;
+					break;
+				case GoalTrophy::Silver:
+					++sil;
+					break;
+				case GoalTrophy::Gold:
+					++gld;
+					break;
+				case GoalTrophy::None:
+					++fld;	// failed
+					break;
+				default:
+					WARN("Retrieved trophy record with invalid type");
+					return;
+				}
+			}
+			g->setYtdNet(margin);
+			g->setYtdTrophies(gld, sil, brz, fld);
+		}
+		else {
+			WARN("failed to select trophy records due to: " + query.lastError().text().toStdString());
+			return;
+		}
+	}
+	else {
+		WARN("Unable to set year to dates for goal");
 	}
 }
 
@@ -1693,7 +1816,21 @@ void mudget::update_goal_progress(Goal * g) {
 	}
 	else {
 		WARN("tried to update the progress of a goal with invalid time index");
+		return;
 	}
+
+	// ytd net
+	QString netValueString("$ ");
+	netValueString += std::to_string(g->getYtdNet()).c_str();
+	int decimalAt = netValueString.lastIndexOf('.');
+	ytdNetValueLabel->setText(netValueString.left(decimalAt + 2));
+
+	// ytd trophy count
+	const QString gold("Gold"), silver("Silver"), bronze("Bronze"), failed("Failed");
+	progressFrameTrophyCts[gold].second->setText(std::to_string(g->getYtdTrophies()[GoalTrophy::Gold]).c_str());
+	progressFrameTrophyCts[silver].second->setText(std::to_string(g->getYtdTrophies()[GoalTrophy::Silver]).c_str());
+	progressFrameTrophyCts[bronze].second->setText(std::to_string(g->getYtdTrophies()[GoalTrophy::Bronze]).c_str());
+	progressFrameTrophyCts[failed].second->setText(std::to_string(g->getYtdTrophies()[GoalTrophy::None]).c_str());
 }
 
 
@@ -1802,7 +1939,7 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 		desc += category;
 		desc += " monthly.";
 
-		insert_trophy(type, desc, tstamp, earnedTrophy);
+		insert_trophy(type, desc, tstamp, earnedTrophy, numerator);
 	}
 
 	delete_temp();
@@ -1962,7 +2099,7 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 		desc += category;
 		desc += " weekly.";
 
-		insert_trophy(type, desc, tstamp, earnedTrophy);
+		insert_trophy(type, desc, tstamp, earnedTrophy, numerator);
 	}
 }
 
@@ -2060,7 +2197,7 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 		desc += category;
 		desc += " yearly.";
 
-		insert_trophy(type, desc, tstamp, earnedTrophy);
+		insert_trophy(type, desc, tstamp, earnedTrophy, numerator);
 	}
 
 	delete_temp();

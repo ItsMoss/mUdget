@@ -17,3 +17,19 @@ std::string melpers::getCurrentTime(int dayOffset, bool verbose) {
 
 	return ret;
 }
+
+bool melpers::comboBoxContains(QComboBox * combo, QString txt) {
+	if (combo) {
+		const int initIdx = combo->currentIndex();
+		const int nItems = combo->count();
+		for (int ii = 0; ii < nItems; ++ii) {
+			combo->setCurrentIndex(ii);
+			if (combo->currentText() == txt) {
+				combo->setCurrentIndex(initIdx);
+				return true;
+			}
+		}
+		combo->setCurrentIndex(initIdx);
+	}
+	return false;
+}
