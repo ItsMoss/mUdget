@@ -1376,7 +1376,10 @@ void mudget::init_month_year_maps() {
 		monthMap[moNum] = ui.monthComboBox->currentText();
 	}
 	// years
-	yearMap[0] = ui.yearComboBox->currentText().toStdString().c_str();
+	int yrIdx = 0;
+	yearMap[yrIdx++] = "2018";
+	yearMap[yrIdx++] = "2019";
+	yearMap[yrIdx++] = "2020";
 	// month -> days
 	monthDaysMap["01"] = 31;
 	monthDaysMap["02"] = 28;
@@ -1690,14 +1693,21 @@ std::string mudget::remove_newline(std::string & str) {
 void mudget::setYear2Dates4Goal(Goal * g) {
 	// db must be initialized for this to work
 	if (dbAvailable) {
-		INFO("setting year to dates for goal");
-		QString desc2select = g->save().c_str();
-		// select all trophies with this goal's description
+		QString goalString(g->save().c_str());
+		// remove the newline character
+		goalString.remove('\n');
+		INFO("setting year to dates for goal: " + goalString.toStdString());
+		QString desc2select(goalString);
+		// get current year
+		QString currYr = loginTime.substr(loginTime.length() - 4, 4).c_str();
+		// select all trophies with this goal's description in this year!
 		QString apo("'");
 		QString selectTrophies("SELECT TYPE, MARGIN FROM TROPHIES WHERE DESCRIPTION IN (");
 		selectTrophies += apo;
 		selectTrophies += desc2select;
-		selectTrophies += "');";
+		selectTrophies += "') AND TIMESTAMP LIKE '%";
+		selectTrophies += currYr;
+		selectTrophies += "';";
 
 		QSqlQuery query;
 		query.exec(selectTrophies);
@@ -1727,6 +1737,7 @@ void mudget::setYear2Dates4Goal(Goal * g) {
 					return;
 				}
 			}
+			DEBUG("Margin = " + std::to_string(margin));
 			g->setYtdNet(margin);
 			g->setYtdTrophies(gld, sil, brz, fld);
 		}
