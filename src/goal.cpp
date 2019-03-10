@@ -89,6 +89,27 @@ Goal::~Goal() {
 
 }
 
+void Goal::addYtdNet(int toAdd) {
+	ytdNet += toAdd;
+}
+
+
+bool Goal::addYtdTrophy(GoalTrophy trophy_t) {
+	switch (trophy_t) {
+	case GoalTrophy::Gold:
+	case GoalTrophy::Silver:
+	case GoalTrophy::Bronze:
+	case GoalTrophy::None:
+		ytdTrophies[trophy_t] += 1;
+		break;
+	default:
+		// only collusion would allow code to reach this line...
+		return false;
+	}
+	return true;
+}
+
+
 const QPushButton * Goal::getDelete() const {
 	return &deleteButton;
 }

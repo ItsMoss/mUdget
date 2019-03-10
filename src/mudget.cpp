@@ -918,7 +918,12 @@ bool mudget::auto_save_settings() {
 
 
 void mudget::award_trophies() {
-	// determine time since last login
+	// determine time since last login...
+	// but if no lastLoginTime exists this will fail so get tf out!
+	if (!valid_last_login()) {
+		WARN("Invalid value for last login time encountered");
+		return;
+	}
 	int nDays = 0;
 	int daysSinceSunday = 0;
 	bool foundSunday = false;
@@ -1410,9 +1415,11 @@ void mudget::init_progress_frame() {
 	*/
 	const QString current("Current"), ytdNet("YTD Net"), ytdTrophyCount("YTD Trophies");
 	const QString gold("Gold"), silver("Silver"), bronze("Bronze"), failed("Failed");
+
 	progressFrameHeadings[current] = std::make_unique<QLabel>(current);
 	progressFrameHeadings[ytdNet] = std::make_unique<QLabel>(ytdNet);
 	progressFrameHeadings[ytdTrophyCount] = std::make_unique<QLabel>(ytdTrophyCount);
+
 	progressFrameTrophyCts[gold] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(gold), std::make_unique<QLabel>());
 	progressFrameTrophyCts[gold].first->setStyleSheet("color: rgb(212, 175, 55);");		// gold
 	progressFrameTrophyCts[silver] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(silver), std::make_unique<QLabel>());
@@ -1421,6 +1428,7 @@ void mudget::init_progress_frame() {
 	progressFrameTrophyCts[bronze].first->setStyleSheet("color: rgb(205, 127, 50);");	// bronze
 	progressFrameTrophyCts[failed] = std::make_pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> >(std::make_unique<QLabel>(failed), std::make_unique<QLabel>());
 	progressFrameTrophyCts[failed].first->setStyleSheet("color: rgb(255, 0, 0);");		// red
+
 	ytdNetValueLabel = std::make_unique<QLabel>();
 	goalbar = std::make_unique<GoalBar>();
 	goalStringLabel = std::make_unique<QLabel>();
@@ -1428,6 +1436,7 @@ void mudget::init_progress_frame() {
 	font.setBold(true);
 	font.setPointSize(14);
 	goalStringLabel->setFont(font);
+
 	ui.progressFrameLayout->addWidget(goalStringLabel.get(), 0, 1, 1, 5, Qt::AlignCenter);
 	ui.progressFrameLayout->addWidget(progressFrameHeadings[current].get(), 1, 1, 1, 3, Qt::AlignCenter);
 	ui.progressFrameLayout->addWidget(progressFrameHeadings[ytdNet].get(), 1, 4, 1, 1, Qt::AlignCenter);
@@ -1442,8 +1451,10 @@ void mudget::init_progress_frame() {
 	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[bronze].second.get(), 4, 6);
 	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[failed].first.get(), 5, 5);
 	ui.progressFrameLayout->addWidget(progressFrameTrophyCts[failed].second.get(), 5, 6);
+	
 	goalStringLabel->hide();
 	goalbar->hide();
+	
 	goalTimer = std::make_unique<QTimer>();
 	goalTimer->setSingleShot(false);
 	goalTimer->setInterval(5000);
@@ -1918,22 +1929,22 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 	else {
 		bool earnedTrophy = true;	// default to earning trophy
 		float pct = numerator / denominator;
-		GoalTrophy type;
+		GoalTrophy trophy_t;
 
 		if (pct > GOLD_THRESHOLD) {
-			type = GoalTrophy::Gold;
+			trophy_t = GoalTrophy::Gold;
 			display_message("You earned a Gold (monthly) trophy!");
 		}
 		else if (pct > SILVER_THRESHOLD) {
-			type = GoalTrophy::Silver;
+			trophy_t = GoalTrophy::Silver;
 			display_message("You earned a Silver (monthly) trophy!");
 		}
 		else if (pct > BRONZE_THRESHOLD) {
-			type = GoalTrophy::Bronze;
+			trophy_t = GoalTrophy::Bronze;
 			display_message("You earned a Bronze (monthly) trophy!");
 		}
 		else {
-			type = GoalTrophy::None;
+			trophy_t = GoalTrophy::None;
 			earnedTrophy = false;
 		}
 
@@ -1950,10 +1961,12 @@ void mudget::evaluate_monthly_goal(GoalNeed needidx, int amount, QString categor
 		desc += category;
 		desc += " monthly.";
 
-		insert_trophy(type, desc, tstamp, earnedTrophy, numerator);
+		update_ytd_for_goal_via_description(desc, numerator, trophy_t);
+		insert_trophy(trophy_t, desc, tstamp, earnedTrophy, numerator);
 	}
 
 	delete_temp();
+	return;
 }
 
 
@@ -2078,22 +2091,22 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 	else {
 		bool earnedTrophy = true;	// default to earning trophy
 		float pct = numerator / denominator;
-		GoalTrophy type;
+		GoalTrophy trophy_t;
 
 		if (pct > GOLD_THRESHOLD) {
-			type = GoalTrophy::Gold;
+			trophy_t = GoalTrophy::Gold;
 			display_message("You earned a Gold (weekly) trophy!");
 		}
 		else if (pct > SILVER_THRESHOLD) {
-			type = GoalTrophy::Silver;
+			trophy_t = GoalTrophy::Silver;
 			display_message("You earned a Silver (weekly) trophy!");
 		}
 		else if (pct > BRONZE_THRESHOLD) {
-			type = GoalTrophy::Bronze;
+			trophy_t = GoalTrophy::Bronze;
 			display_message("You earned a Bronze (weekly) trophy!");
 		}
 		else {
-			type = GoalTrophy::None;
+			trophy_t = GoalTrophy::None;
 			earnedTrophy = false;
 		}
 
@@ -2110,8 +2123,10 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 		desc += category;
 		desc += " weekly.";
 
-		insert_trophy(type, desc, tstamp, earnedTrophy, numerator);
+		update_ytd_for_goal_via_description(desc, numerator, trophy_t);
+		insert_trophy(trophy_t, desc, tstamp, earnedTrophy, numerator);
 	}
+	return;
 }
 
 
@@ -2176,22 +2191,22 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 	else {
 		bool earnedTrophy = true;	// default to earning trophy
 		float pct = numerator / denominator;
-		GoalTrophy type;
+		GoalTrophy trophy_t;
 
 		if (pct > GOLD_THRESHOLD) {
-			type = GoalTrophy::Gold;
+			trophy_t = GoalTrophy::Gold;
 			display_message("You earned a Gold (yearly) trophy!");
 		}
 		else if (pct > SILVER_THRESHOLD) {
-			type = GoalTrophy::Silver;
+			trophy_t = GoalTrophy::Silver;
 			display_message("You earned a Silver (yearly) trophy!");
 		}
 		else if (pct > BRONZE_THRESHOLD) {
-			type = GoalTrophy::Bronze;
+			trophy_t = GoalTrophy::Bronze;
 			display_message("You earned a Bronze (yearly) trophy!");
 		}
 		else {
-			type = GoalTrophy::None;
+			trophy_t = GoalTrophy::None;
 			earnedTrophy = false;
 		}
 
@@ -2208,13 +2223,63 @@ void mudget::evaluate_yearly_goal(GoalNeed needidx, int amount, QString category
 		desc += category;
 		desc += " yearly.";
 
-		insert_trophy(type, desc, tstamp, earnedTrophy, numerator);
+		update_ytd_for_goal_via_description(desc, numerator, trophy_t);
+		insert_trophy(trophy_t, desc, tstamp, earnedTrophy, numerator);
 	}
 
 	delete_temp();
+	return;
 }
 
 
 void mudget::update_profit() {
 	ui.profitSpinBox->setValue(ui.incomeSpinBox->value() + ui.expensesSpinBox->value());
+}
+
+
+void mudget::update_ytd_for_goal_via_description(QString desc, int add2net, GoalTrophy trophy_t) {
+	for (Goal * goal : this->goals) {
+		if (desc == goal->save().c_str()) {
+			goal->addYtdNet(add2net);
+			goal->addYtdTrophy(trophy_t);
+		}
+	}
+}
+
+
+bool mudget::valid_last_login() {
+	// just making sure it is at least "AAA_AAA_##_####" where A=letter, _=space, and #=digit
+	// NOTE: the very first # can also be a space in case the date is sinlge digit
+	// e.g. Sun Mar 10 2019
+	int expectedLength = 15;
+
+	if (lastLoginTime.length() != expectedLength) {
+		return false;
+	}
+
+	for (int chIdx = 0; chIdx < expectedLength; ++chIdx) {
+		if (chIdx < 3 || (chIdx > 3 && chIdx < 7)) {
+			if (!isalpha(lastLoginTime[chIdx])) {
+				return false;
+			}
+		}
+		else if (chIdx == 3 || chIdx == 7 || chIdx == 10) {
+			if (lastLoginTime[chIdx] != ' ') {
+				return false;
+			}
+		}
+		else if (chIdx == 8) {
+			if (lastLoginTime[chIdx] != ' ' && !isdigit(lastLoginTime[chIdx])) {
+				return false;
+			}
+		}
+		else {
+			// assume digit
+			if (!isdigit(lastLoginTime[chIdx])) {
+				return false;
+			}
+		}
+	}
+
+	return true;
 }

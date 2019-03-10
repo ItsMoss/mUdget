@@ -105,11 +105,11 @@ private:
 	bool delete_old_db_records();									// removes db records older than 3 months ago
 	void delete_temp();												// deallocates tempExpenses and tempIncome
 	int display_message(const QString & msg, bool question=false);	// displayes message to user
-	void evaluate_monthly_goal(GoalNeed needidx, int amount,		// updates progress for monthly goal
+	void evaluate_monthly_goal(GoalNeed needidx, int amount,	// updates progress for monthly goal
 		QString category, QString tstamp, bool update);
-	void evaluate_weekly_goal(GoalNeed needidx, int amount,			// updates progress for weekly goal
+	void evaluate_weekly_goal(GoalNeed needidx, int amount,		// updates progress for weekly goal
 		QString category, QString tstamp, bool update);
-	void evaluate_yearly_goal(GoalNeed needidx, int amount,			// updates progress for yearly goal
+	void evaluate_yearly_goal(GoalNeed needidx, int amount,		// updates progress for yearly goal
 		QString category, QString tstamp, bool update);
 	void find_matching_expenses(std::vector<mudgetCategory*> & matches,	// finds all expenses under specified category in current month
 		QString catname, bool temp=true);
@@ -127,4 +127,7 @@ private:
 	void update_category_calculations();							// updates categoryCalculateMap after setting categories
 	void update_goal_progress(Goal * g);							// updates progress of specified goal
 	void update_profit();											// updates profit
+	void update_ytd_for_goal_via_description(QString desc,			// updates YTD for a goal that is being awarded a trophy
+		int add2net, GoalTrophy trophy_t);			
+	bool valid_last_login();										// is lastLoginTime valid
 };

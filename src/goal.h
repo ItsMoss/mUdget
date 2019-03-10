@@ -73,6 +73,8 @@ public:
 	void setYtdTrophies(int gold, int silver, int bronze, int failed);		// set variable ytdTrophies
 	double getYtdNet() const;				// returns ytdNet
 	std::map<GoalTrophy, size_t> getYtdTrophies() const;	// returns ytdTrophies
+	void addYtdNet(int toAdd);				// adds to YTD net
+	bool addYtdTrophy(GoalTrophy trophy_t);	// increments YTD trophies
 
 private:
 	std::string remove_newline(std::string & str);		// removes newline char from string
