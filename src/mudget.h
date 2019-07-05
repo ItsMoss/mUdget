@@ -14,6 +14,7 @@
 #include <qdiriterator.h>
 #include <qframe.h>
 #include <qmessagebox.h>
+#include <qscrollarea.h>
 #include <qsignalmapper.h>
 #include <qtextedit.h>
 #include <qtimer.h>
@@ -74,11 +75,10 @@ public:
 	~mudget();												// destructor
 
 public slots:
-	void addMudgetCategory();								// adds a new expense category to display
 	void calculateGoalProgress();							// runs every 5 sec to display progress of each goal
-	void load(QString openFName = "");						// loads in a .moss file (i.e. a month's financial data)
+	void load(QString openFName = "");						// loads in a .moss file (i.e. a month's financial data)							** UPDATE **
 	void openDatabaseWindow(int);							// displayes db view
-	void performWantedCalculation();						// performs one of many calculations user has requested
+	void performWantedCalculation();						// performs one of many calculations user has requested								** FIX **
 	void receiveRecord(QString exp, double amount,			// receives newly created record info to insert in db
 		QString cat, int n, QString t);
 	void save();											// save .moss file
@@ -93,13 +93,14 @@ protected:
 	virtual void closeEvent(QCloseEvent * qce);				// when "X" button is pressed
 
 private:
-	mudgetCategory* add_first_available_expense_category();			// adds loaded category into first available space within ui
+	mudgetCategory* get_first_available_expense_category();			// gets first available expense space within ui
 	bool auto_save_settings();										// saves settings to SETTINGS_FILE_NAME upon closing app
 	void award_trophies();											// award any trophies that should be rewarded since last login
 	double calculate_expenses(bool temp=true, bool calcAll=false);	// calculates expenses for currently loaded .moss file
 	double calculate_income(bool temp=true) const;					// calculates income for currently loaded .moss file
 	void clean_up_ui();												
 	void clear_goals();												// removes all goals
+	void create_empty_expenses();									// initializes all expense categories
 	void create_income_category();									// initializes income category
 	void delete_all();												// deallocates everything
 	bool delete_old_db_records();									// removes db records older than 3 months ago
@@ -113,6 +114,7 @@ private:
 		QString category, QString tstamp, bool update);
 	void find_matching_expenses(std::vector<mudgetCategory*> & matches,	// finds all expenses under specified category in current month
 		QString catname, bool temp=true);
+	mudgetCategory* get_existing_expense_category(std::string catname);		// returns category box for an already existing category, o/w NULL
 	void init_database();											// init db
 	void init_display_case();										// inits display case on Goals tab
 	void init_month_year_maps();									// init maps for month and year

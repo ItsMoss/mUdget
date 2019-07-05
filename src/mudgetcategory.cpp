@@ -1,21 +1,12 @@
 #include "mudgetcategory.h"
 
-mudgetCategory::mudgetCategory(std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false) {
+mudgetCategory::mudgetCategory(std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false), total(0.) {
 	for (int c = 0; c < map.size(); ++c) {
 		category.addItem(categoryMap[c]);
 	}
-	mainLayout.addWidget(&category, 0, 0, Qt::AlignHCenter | Qt::AlignBottom);
-	const int lineItemMax = 7;
-	for (int i = 0; i < lineItemMax; ++i) {
-		expenseItem item;
-		item.first = new QLineEdit;
-		item.second = new QDoubleSpinBox;
-		item.second->setMaximum(999999);
-		lineItems.push_back(item);
-		itemLayout.addWidget(lineItems.back().first, i, 0);
-		itemLayout.addWidget(lineItems.back().second, i, 1);
-		connect(item.second, SIGNAL(valueChanged(double)), this, SLOT(updateTotal()));
-	}
+	mainLayout.addWidget(&category, 0, 0);
+	itemLayout.addWidget(&addButton, 0, 0, 1, 2, Qt::AlignHCenter);
+	connect(&addButton, SIGNAL(clicked()), this, SLOT(addLineItem()));
 	mainLayout.addLayout(&itemLayout, 1, 0);
 	setLayout(&mainLayout);
 	setStyleSheet("border: 3px solid white");
@@ -23,22 +14,12 @@ mudgetCategory::mudgetCategory(std::map<int, QString> & map, bool showIt) : cate
 	setSizePolicy(QSizePolicy::Minimum , QSizePolicy::Minimum);
 }
 
-mudgetCategory::mudgetCategory(QString cat, std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false) {
+mudgetCategory::mudgetCategory(QString cat, std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false), total(0.) {
 	category.addItem(cat);
 	category.setEnabled(false);
-	mainLayout.addWidget(&category, 0, 0, Qt::AlignHCenter | Qt::AlignBottom);
-	const int lineItemMax = 7;
-	for (int i = 0; i < lineItemMax; ++i) {
-		expenseItem item;
-		item.first = new QLineEdit;
-		item.second = new QDoubleSpinBox;
-		item.second->setMaximum(999999);
-		lineItems.push_back(item);
-		itemLayout.addWidget(lineItems.back().first, i, 0);
-		itemLayout.addWidget(lineItems.back().second, i, 1);
-		connect(item.second, SIGNAL(valueChanged(double)), this, SLOT(updateTotal()));
-		connect(item.second, SIGNAL(editingFinished()), this, SLOT(createRecord()));
-	}
+	mainLayout.addWidget(&category, 0, 0);
+	itemLayout.addWidget(&addButton, 0, 0, 1, 2, Qt::AlignHCenter);
+	connect(&addButton, SIGNAL(clicked()), this, SLOT(addLineItem()));
 	mainLayout.addLayout(&itemLayout, 1, 0);
 	setLayout(&mainLayout);
 	setStyleSheet("border: 3px solid white");
@@ -55,12 +36,11 @@ mudgetCategory & mudgetCategory::operator=(const mudgetCategory & rhs) {
 	if (this != &rhs) {
 		categoryMap = rhs.categoryMap;
 		category.setCurrentText(rhs.category.currentText());
-		//lineItems = rhs.lineItems;
-		mainLayout.addWidget(&category, 0, 0, Qt::AlignHCenter, Qt::AlignBottom);
-		const int lineItemMax = 7;
-		for (int i = 0; i < lineItemMax; ++i) {
-			itemLayout.addWidget(lineItems[i].first, i, 0);
-			itemLayout.addWidget(lineItems[i].second, i, 1);
+		mainLayout.addWidget(&category, 0, 0, Qt::AlignHCenter | Qt::AlignTop);
+		for (int i = 0; i < rhs.lineItems.size(); ++i) {
+			this->addLineItem();
+			lineItems[i].first->setText(rhs.lineItems[i].first->text());
+			lineItems[i].second->setValue(rhs.lineItems[i].second->value());
 		}
 		mainLayout.addLayout(&itemLayout, 1, 0);
 	}
@@ -75,12 +55,28 @@ QString mudgetCategory::get_category_name() const {
 	return category.currentText();
 }
 
-void mudgetCategory::set_category_name(QString name) {
+void mudgetCategory::set_category_name(QString name, bool force) {
+	if (force) {
+		category.addItem(name);
+	}
 	category.setCurrentText(name);
 }
 
 double mudgetCategory::get_total() const {
 	return total;
+}
+
+void mudgetCategory::addLineItem() {
+	expenseItem item;
+	item.first = new QLineEdit;
+	item.second = new QDoubleSpinBox;
+	item.second->setMaximum(999999);
+	lineItems.push_back(item);
+	int row2add = lineItems.size() - 1;
+	itemLayout.addWidget(lineItems.back().first, row2add, 0);
+	itemLayout.addWidget(lineItems.back().second, row2add, 1);
+	itemLayout.addWidget(&addButton, row2add + 1, 0, 1, 2, Qt::AlignHCenter);
+	connect(item.second, SIGNAL(valueChanged(double)), this, SLOT(updateTotal()));
 }
 
 void mudgetCategory::createRecord(int itemNumber) {
@@ -122,39 +118,28 @@ bool mudgetCategory::load(QFile & f) {
 	std::string line, left, right;
 	size_t colonPos;
 	std::string Category("Category:");
-	bool brokeEarly = false;
-	// lineItem.first:lineItem.second
-	for (auto & exp : lineItems) {
-		line = remove_newline(f.readLine().toStdString());
-		if (line == "") {
-			brokeEarly = true;
-			break;
-		}
-		else if (line.substr(0, Category.length()) == Category) {
+
+	line = remove_newline(f.readLine().toStdString());
+	while (!line.empty()) {
+		if (line.substr(0, Category.length()) == Category) {
 			loading = false;
 			return false;
 		}
+		addLineItem();
 		colonPos = line.find_first_of(':');
 		left = line.substr(0, colonPos);
 		right = line.substr(colonPos + 1);
-		exp.first->setText(left.c_str());
-		exp.second->setValue(strtod(right.c_str(), NULL));
+		lineItems.back().first->setText(left.c_str());
+		lineItems.back().second->setValue(strtod(right.c_str(), NULL));
+		line = remove_newline(f.readLine().toStdString());
 	}
-
-	if (!brokeEarly) {
-		f.readLine();	// should be empty line
-	}
-
+	
 	loading = false;
 	return true;
 }
 
 void mudgetCategory::reset() {
-	const int lineItemMax = 7;
-	for (auto & exp : lineItems) {
-		exp.first->setText("");
-		exp.second->setValue(0);
-	}
+	lineItems.clear();
 }
 
 std::string mudgetCategory::save() {

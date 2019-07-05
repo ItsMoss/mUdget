@@ -4,6 +4,7 @@
 #include "expenseitem.h"
 #include "melpers.h"
 #include <map>
+#include <qpushbutton.h>
 #include <qcombobox.h>
 #include <qfile.h>
 #include <qlayout.h>
@@ -19,6 +20,7 @@ class mudgetCategory : public QFrame {
 	QComboBox category;					// name of expense
 	QGridLayout mainLayout;				// layout of widget
 	QGridLayout itemLayout;				// layout of expense line items
+	QPushButton addButton;				// button to add a new expense item
 	double total;						// total amount expenses
 	std::vector<expenseItem> lineItems;	// all the expenses by name, value pair
 	bool loading;						// are line items currently being loaded
@@ -30,7 +32,7 @@ class mudgetCategory : public QFrame {
 		mudgetCategory & operator=(const mudgetCategory & rhs);
 		~mudgetCategory();
 		QString get_category_name() const;
-		void set_category_name(QString name);
+		void set_category_name(QString name, bool force=false);
 		double get_total() const;
 		bool load(QFile & f);
 		void reset();
@@ -38,6 +40,7 @@ class mudgetCategory : public QFrame {
 		void update_category();
 	
 	public slots:
+		void addLineItem();
 		void createRecord(int itemNumber=-1);
 		void updateTotal();
 	

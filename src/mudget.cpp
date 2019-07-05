@@ -22,10 +22,11 @@ mudget::mudget(QWidget *parent)
 	init_month_year_maps();		// must init months AND db before loading settings right now!
 	init_database();
 	load_settings();
+	create_income_category();
+	create_empty_expenses();	// <-- kind of a hack, BUT expenses need to be created after categoryMap but before loading!!
 	skipSlot = true;
 	update_calculation_combo();
 	skipSlot = false;
-	create_income_category();
 	tempIncome = 0;
 	clean_up_ui();
 	init_progress_frame();
@@ -62,20 +63,6 @@ mudget::~mudget() {
 	bronzeTrophies.second.reset();
 
 	INFO("mUdget destructed");
-}
-
-
-void mudget::addMudgetCategory() {
-	INFO("new category added");
-	expenses.push_back(new mudgetCategory(categoryMap));
-	int index = ui.mainLayout->indexOf(static_cast<QWidget*>(QObject::sender()));
-	int row, col, rowspan, colspan;
-	ui.mainLayout->getItemPosition(index, &row, &col, &rowspan, &colspan);
-	ui.mainLayout->removeWidget(static_cast<QWidget*>(QObject::sender()));
-	ui.mainLayout->addWidget(expenses.back(), row, col, rowspan, colspan, Qt::AlignCenter);
-	static_cast<QWidget*>(QObject::sender())->hide();
-	connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
-	connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)), this, SLOT(receiveRecord(QString, double, QString, int, QString)));
 }
 
 
@@ -132,7 +119,7 @@ void mudget::load(QString openFName) {
 	}
 
 	if (openFName == "") {
-		// this means user has not logged and/or saved any expenses for this month
+		// this means user has not logged and saved any expenses for this month
 		ui.expensesSpinBox->setValue(0);
 		update_profit();
 		return;
@@ -192,9 +179,13 @@ void mudget::load(QString openFName) {
 			}
 			if (left == category) {
 				if (!fnameProvided) {
-					mudgetCategory * exp = add_first_available_expense_category();
+					std::string category_name(right);
+					mudgetCategory * exp = get_existing_expense_category(category_name);
+					if (!exp) {
+						exp = get_first_available_expense_category();
+					}
 					if (exp) {
-						exp->set_category_name(right.c_str());
+						exp->set_category_name(category_name.c_str(), true);
 						if (!exp->load(file2load)) {
 							ERROR("loading an expense failed");
 							display_message("Error loading file - loading an expense failed.");
@@ -802,50 +793,13 @@ void mudget::closeEvent(QCloseEvent * qce) {
 }
 
 
-mudgetCategory * mudget::add_first_available_expense_category() {
-	if (ui.addCategory0->isVisible()) {
-		emit ui.addCategory0->clicked();
+mudgetCategory * mudget::get_first_available_expense_category() {
+	for (auto exp : expenses) {
+		if (!exp->get_total()) {
+			return exp;
+		}
 	}
-	else if (ui.addCategory1->isVisible()) {
-		emit ui.addCategory1->clicked();
-	}
-	else if (ui.addCategory3->isVisible()) {
-		emit ui.addCategory3->clicked();
-	}
-	else if (ui.addCategory4->isVisible()) {
-		emit ui.addCategory4->clicked();
-	}
-	else if (ui.addCategory5->isVisible()) {
-		emit ui.addCategory5->clicked();
-	}
-	else if (ui.addCategory6->isVisible()) {
-		emit ui.addCategory6->clicked();
-	}
-	else if (ui.addCategory7->isVisible()) {
-		emit ui.addCategory7->clicked();
-	}
-	else if (ui.addCategory8->isVisible()) {
-		emit ui.addCategory8->clicked();
-	}
-	else if (ui.addCategory9->isVisible()) {
-		emit ui.addCategory9->clicked();
-	}
-	else if (ui.addCategory10->isVisible()) {
-		emit ui.addCategory10->clicked();
-	}
-	else if (ui.addCategory11->isVisible()) {
-		emit ui.addCategory11->clicked();
-	}
-	else if (ui.addCategory12->isVisible()) {
-		emit ui.addCategory12->clicked();
-	}
-	else if (ui.addCategory13->isVisible()) {
-		emit ui.addCategory13->clicked();
-	}
-	else {
-		return NULL;
-	}
-	return expenses.back();
+	return NULL;
 }
 
 
@@ -1043,40 +997,36 @@ void mudget::clear_goals() {
 }
 
 
+void mudget::create_empty_expenses() {
+	QScrollArea* scrollareas[] = {  ui.scrollArea1,
+									ui.scrollArea2,
+									ui.scrollArea3,
+									ui.scrollArea4,
+									ui.scrollArea5,
+									ui.scrollArea6,
+									ui.scrollArea7,
+									ui.scrollArea8,
+									ui.scrollArea9 };
+
+	for (auto scrollarea : scrollareas) {
+		expenses.push_back(new mudgetCategory(categoryMap));
+		scrollarea->setWidget(expenses.back());
+	}
+}
+
+
 void mudget::create_income_category() {
 	uiIncome = new mudgetCategory("Income", categoryMap);
-	int index = ui.mainLayout->indexOf(ui.addCategory2);
-	int row, col, rowspan, colspan;
-	ui.mainLayout->getItemPosition(index, &row, &col, &rowspan, &colspan);
-	ui.mainLayout->removeWidget(ui.addCategory2);
-	ui.mainLayout->addWidget(uiIncome, row, col, rowspan, colspan, Qt::AlignCenter);
-	ui.addCategory2->hide();
+	ui.scrollArea0->setWidget(uiIncome);
 	connect(uiIncome, SIGNAL(updateExpenses()), this, SLOT(updateIncome()));
 }
 
 
 void mudget::delete_all() {
-	QPushButton * buttons[] = { ui.addCategory0,
-								ui.addCategory1,
-								ui.addCategory3,
-								ui.addCategory4,
-								ui.addCategory5,
-								ui.addCategory6,
-								ui.addCategory7,
-								ui.addCategory8,
-								ui.addCategory9,
-								ui.addCategory10,
-								ui.addCategory11,
-								ui.addCategory12,
-								ui.addCategory13 };
-	int b = 0;
+	// we do not actually want to deallocate expense boxes themselves, just reset to be empty
 	for (auto exp : expenses) {
-		buttons[b]->show();
-		ui.mainLayout->replaceWidget(exp, buttons[b++]);
-		ui.mainLayout->setAlignment(buttons[b - 1], Qt::AlignHCenter);
-		delete exp;
+		exp->reset();
 	}
-	expenses.clear();
 	delete_temp();
 }
 
@@ -1166,6 +1116,16 @@ void mudget::find_matching_expenses(std::vector<mudgetCategory*> & matches, QStr
 			matches.push_back(exp);
 		}
 	}
+}
+
+mudgetCategory* mudget::get_existing_expense_category(std::string catname) {
+	for (auto exp : expenses) {
+		if (exp->get_category_name().toStdString() == catname) {
+			return exp;
+		}
+	}
+
+	return NULL;
 }
 
 
@@ -1633,6 +1593,7 @@ bool mudget::load_settings() {
 		line = remove_newline(file2load.readLine().toStdString());
 		int currMo = strtoul(line.substr(0, 2).c_str(), NULL, 10);
 		if (currMo) {
+			// this loads the month as well
 			ui.monthComboBox->setCurrentIndex(currMo - 1);
 		}
 		// *** go ahead and set Year here as well ***
