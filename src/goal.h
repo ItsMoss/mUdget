@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QStringList>
 #include <memory>
+#include <set>
 
 #define GOLD_THRESHOLD		0.8
 #define SILVER_THRESHOLD	0.6
@@ -36,7 +37,7 @@ enum class GoalTrophy {
 class Goal : public QWidget {
 	Q_OBJECT
 	
-	std::map<int, QString> & categoryMap;	// map of expense categories
+	std::set<QString> & categories;			// expense categories
 	QLabel label;							// starts off goal by reading "I need to"
 	QComboBox need;							// combo box for user to select need
 	QSpinBox amount;						// $ amount corresponding with need
@@ -52,8 +53,8 @@ class Goal : public QWidget {
 	std::map<GoalTrophy, size_t> ytdTrophies;	// year-to-date trophy counts for this goal
 
 public:
-	Goal(std::map<int, QString> & map);		// constructor 1
-	Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat, int timeIndex);	// constructor 2
+	Goal(std::set<QString> & cats);		// constructor 1
+	Goal(std::set<QString> & cats, int needIndex, double amt, QString cat, int timeIndex);	// constructor 2
 	~Goal();								// destructor
 	const QPushButton * getDelete() const;	// returns pointer to deleteButton
 	QString getNeedText() const;			// returns need current text

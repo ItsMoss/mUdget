@@ -4,6 +4,7 @@
 #include "expenseitem.h"
 #include "melpers.h"
 #include <map>
+#include <qdialog.h>
 #include <qpushbutton.h>
 #include <qcombobox.h>
 #include <qfile.h>
@@ -11,13 +12,13 @@
 #include <qlineedit.h>
 #include <qobject.h>
 #include <qsizepolicy.h>
+#include <set>
 #include <vector>
 
 class mudgetCategory : public QFrame {
 	Q_OBJECT
 
-	std::map<int, QString> & categoryMap;	// map of expense categories
-	QComboBox category;					// name of expense
+	QLineEdit category;					// name of expense
 	QGridLayout mainLayout;				// layout of widget
 	QGridLayout itemLayout;				// layout of expense line items
 	QPushButton addButton;				// button to add a new expense item
@@ -25,19 +26,21 @@ class mudgetCategory : public QFrame {
 	std::vector<expenseItem> lineItems;	// all the expenses by name, value pair
 	bool loading;						// are line items currently being loaded
 
+	public:
+		QPushButton addCategory;		// button to add category (public in order for mudget to access pressed SIGNAL)
+
 	public:	// methods
-		mudgetCategory(std::map<int, QString> & map, bool showIt=true);
-		mudgetCategory(QString cat, std::map<int, QString> & map, bool showIt=true);
+		mudgetCategory(bool showIt=true);
+		mudgetCategory(QString cat, bool showIt=true);
 		mudgetCategory(const mudgetCategory & rhs);
 		mudgetCategory & operator=(const mudgetCategory & rhs);
 		~mudgetCategory();
 		QString get_category_name() const;
-		void set_category_name(QString name, bool force=false);
+		void set_category_name(QString name);
 		double get_total() const;
 		bool load(QFile & f);
 		void reset();
 		std::string save();
-		void update_category();
 	
 	public slots:
 		void addLineItem();

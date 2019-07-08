@@ -1,32 +1,34 @@
 #include "mudgetcategory.h"
 
-mudgetCategory::mudgetCategory(std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false), total(0.) {
-	for (int c = 0; c < map.size(); ++c) {
-		category.addItem(categoryMap[c]);
-	}
-	mainLayout.addWidget(&category, 0, 0);
+mudgetCategory::mudgetCategory(bool showIt) : loading(false), total(0.) {
+	addCategory.setText("Add Category");
+	category.setReadOnly(true);
+	mainLayout.addWidget(&addCategory, 0, 0, Qt::AlignTop);
+	mainLayout.addWidget(&category, 1, 0, Qt::AlignTop);
+	category.hide();
 	itemLayout.addWidget(&addButton, 0, 0, 1, 2, Qt::AlignHCenter);
 	connect(&addButton, SIGNAL(clicked()), this, SLOT(addLineItem()));
-	mainLayout.addLayout(&itemLayout, 1, 0);
+	mainLayout.addLayout(&itemLayout, 2, 0);
 	setLayout(&mainLayout);
 	setStyleSheet("border: 3px solid white");
 	setVisible(showIt);
 	setSizePolicy(QSizePolicy::Minimum , QSizePolicy::Minimum);
 }
 
-mudgetCategory::mudgetCategory(QString cat, std::map<int, QString> & map, bool showIt) : categoryMap(map), loading(false), total(0.) {
-	category.addItem(cat);
-	category.setEnabled(false);
-	mainLayout.addWidget(&category, 0, 0);
+mudgetCategory::mudgetCategory(QString cat, bool showIt) : loading(false), total(0.) {
+	addCategory.setText("Add Category");
+	category.setText(cat);
+	category.setReadOnly(true);
+	mainLayout.addWidget(&category, 0, 0, Qt::AlignTop);
 	itemLayout.addWidget(&addButton, 0, 0, 1, 2, Qt::AlignHCenter);
 	connect(&addButton, SIGNAL(clicked()), this, SLOT(addLineItem()));
-	mainLayout.addLayout(&itemLayout, 1, 0);
+	mainLayout.addLayout(&itemLayout, 2, 0);
 	setLayout(&mainLayout);
 	setStyleSheet("border: 3px solid white");
 	setVisible(showIt);
 }
 
-mudgetCategory::mudgetCategory(const mudgetCategory & rhs) : categoryMap(rhs.categoryMap) {
+mudgetCategory::mudgetCategory(const mudgetCategory & rhs) {
 	if (this != &rhs) {
 		*this = rhs;
 	}
@@ -34,8 +36,7 @@ mudgetCategory::mudgetCategory(const mudgetCategory & rhs) : categoryMap(rhs.cat
 
 mudgetCategory & mudgetCategory::operator=(const mudgetCategory & rhs) {
 	if (this != &rhs) {
-		categoryMap = rhs.categoryMap;
-		category.setCurrentText(rhs.category.currentText());
+		category.setText(rhs.category.text());
 		mainLayout.addWidget(&category, 0, 0, Qt::AlignHCenter | Qt::AlignTop);
 		for (int i = 0; i < rhs.lineItems.size(); ++i) {
 			this->addLineItem();
@@ -52,14 +53,13 @@ mudgetCategory::~mudgetCategory() {
 }
 
 QString mudgetCategory::get_category_name() const {
-	return category.currentText();
+	return category.text();
 }
 
-void mudgetCategory::set_category_name(QString name, bool force) {
-	if (force) {
-		category.addItem(name);
-	}
-	category.setCurrentText(name);
+void mudgetCategory::set_category_name(QString name) {
+	category.setText(name);
+	addCategory.hide();
+	category.show();
 }
 
 double mudgetCategory::get_total() const {
@@ -100,7 +100,7 @@ void mudgetCategory::createRecord(int itemNumber) {
 
 		// only send if valid entry
 		if (item2Record->second->value() != 0 && !item2Record->first->text().isEmpty()) {
-			emit sendRecord(item2Record->first->text(), item2Record->second->value(), category.currentText(), itemNum, tstamp);
+			emit sendRecord(item2Record->first->text(), item2Record->second->value(), category.text(), itemNum, tstamp);
 		}
 	}
 }
@@ -156,25 +156,6 @@ std::string mudgetCategory::save() {
 		createRecord(i++);
 	}
 	return saveStr;
-}
-
-void mudgetCategory::update_category() {
-	// save current category if it is in new map
-	QString oldCategory = category.currentText();
-	bool save = false;
-
-	category.clear();
-	for (int c = 0; c < categoryMap.size(); ++c) {
-		QString newCategory = categoryMap[c];
-		category.addItem(newCategory);
-		if (newCategory == oldCategory) {
-			save = true;
-		}
-	}
-
-	if (save) {
-		category.setCurrentText(oldCategory);
-	}
 }
 
 std::string mudgetCategory::remove_newline(std::string & str) {

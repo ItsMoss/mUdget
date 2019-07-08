@@ -19,6 +19,7 @@
 #include <qtextedit.h>
 #include <qtimer.h>
 #include <qthread.h>
+#include <iterator>
 #include <set>
 #include <string>
 #include "ui_mudget.h"
@@ -47,7 +48,8 @@ class mudget : public QMainWindow
 	mudgetCategory* tempIncome;								// income category for month(s) while doing various calculations (not displayed)
 	std::map<int, QString> monthMap;						// month number to text abbr (e.g. 0->Jan, 1->Feb,...)
 	std::map<int, QString> yearMap;							// year number to text (e.g. 0->"2018", 1->"2019",...)
-	std::map<int, QString> categoryMap;						// category index to category name
+	std::set<QString> expenseCategories;					// category names
+	std::set<QString> availableCategories;					// categories available to be assigned to new expense boxes
 	std::map<QString, int> monthDaysMap;					// month abbr to number of days it contains (e.g. Jan->31, Feb->28, ...)
 	std::map<QString, bool> monthsCalculateMap;				// whether or not a month is to be used in calculation(s)
 	std::map<QString, bool> categoryCalculateMap;			// whether or noa a category is to be used in calculation(s)
@@ -75,6 +77,7 @@ public:
 	~mudget();												// destructor
 
 public slots:
+	void addCategoryPressed();								// when "Add Category" pressed to add category to expense box
 	void calculateGoalProgress();							// runs every 5 sec to display progress of each goal
 	void load(QString openFName = "");						// loads in a .moss file (i.e. a month's financial data)							** UPDATE **
 	void openDatabaseWindow(int);							// displayes db view
@@ -124,8 +127,8 @@ private:
 	bool load_settings();											// load auto-saved settings
 	std::string remove_newline(std::string & str);					// remove newline character
 	void setYear2Dates4Goal(Goal * g);								// sets ytdNet and ytdTrophies for a Goal
-	void update_calculation_combo();								// updates calculation combo to match all categories in categoryMap
-	void update_categories();										// updates categoryMap after setting categories
+	void update_available_categories();								// updates availableCategories accordingly (after setting categories, and loading)
+	void update_calculation_combo();								// updates calculation combo to match all categories
 	void update_category_calculations();							// updates categoryCalculateMap after setting categories
 	void update_goal_progress(Goal * g);							// updates progress of specified goal
 	void update_profit();											// updates profit

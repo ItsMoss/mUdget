@@ -1,7 +1,7 @@
 #include "goal.h"
 
 
-Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false), ytdNet(0) {
+Goal::Goal(std::set<QString> & cats) : categories(cats), locked(false), ytdNet(0) {
 	/*I need to "spend less than " "000000.00" "on everything"	"weekly " .
 		                                       "on <category>"	"monthly"
 		        "make a profit of"			   "             "	"yearly "*/
@@ -17,8 +17,8 @@ Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false), ytdN
 	connect(&amount, SIGNAL(valueChanged(int)), this, SLOT(validate()));
 	category.addItem("");
 	category.addItem("on everything");
-	for (int c = 0; c < map.size(); ++c) {
-		category.addItem("on " + categoryMap[c]);
+	for (std::set<QString>::const_iterator it = categories.begin(); it != categories.end(); ++it) {
+		category.addItem("on " + *it);
 	}
 	hLayout.addWidget(&category);
 	connect(&category, SIGNAL(currentIndexChanged(int)), this, SLOT(validate()));
@@ -41,7 +41,7 @@ Goal::Goal(std::map<int, QString> & map) : categoryMap(map), locked(false), ytdN
 	ytdTrophies[GoalTrophy::Gold] = 0;
 }
 
-Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat, int timeIndex) : categoryMap(map), locked(false), ytdNet(0) {
+Goal::Goal(std::set<QString> & cats, int needIndex, double amt, QString cat, int timeIndex) : categories(cats), locked(false), ytdNet(0) {
 	label.setText("I need to ");
 	hLayout.addWidget(&label);
 	QStringList needList;
@@ -54,8 +54,8 @@ Goal::Goal(std::map<int, QString> & map, int needIndex, double amt, QString cat,
 	connect(&amount, SIGNAL(valueChanged(int)), this, SLOT(validate()));
 	category.addItem("");
 	category.addItem("on everything");
-	for (int c = 0; c < map.size(); ++c) {
-		category.addItem("on " + categoryMap[c]);
+	for (std::set<QString>::const_iterator it = categories.begin(); it != categories.end(); ++it) {
+		category.addItem("on " + *it);
 	}
 	hLayout.addWidget(&category);
 	connect(&category, SIGNAL(currentIndexChanged(int)), this, SLOT(validate()));
@@ -253,9 +253,8 @@ void Goal::setYtdTrophies(int gold, int silver, int bronze, int failed) {
 
 void Goal::update_category() {
 	category.clear();
-	for (int c = 0; c < categoryMap.size(); ++c) {
-		QString newCategory = categoryMap[c];
-		category.addItem(newCategory);
+	for (std::set<QString>::const_iterator it = categories.begin(); it != categories.end(); ++it) {
+		category.addItem(*it);
 	}
 }
 

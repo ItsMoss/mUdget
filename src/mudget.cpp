@@ -23,7 +23,7 @@ mudget::mudget(QWidget *parent)
 	init_database();
 	load_settings();
 	create_income_category();
-	create_empty_expenses();	// <-- kind of a hack, BUT expenses need to be created after categoryMap but before loading!!
+	create_empty_expenses();
 	skipSlot = true;
 	update_calculation_combo();
 	skipSlot = false;
@@ -63,6 +63,44 @@ mudget::~mudget() {
 	bronzeTrophies.second.reset();
 
 	INFO("mUdget destructed");
+}
+
+
+void mudget::addCategoryPressed() {
+	// figure out which expense box sent this
+	int expId = -1;
+	for (int ii = 0; ii < expenses.size(); ++ii) {
+		if (QObject::sender() == &expenses[ii]->addCategory) {
+			expId = ii;
+			break;
+		}
+	}
+	if (expId == -1) {	// if this occurs, literally, wtf...
+		ERROR("Invalid sender to addCategoryPressed.");
+		return;
+	}
+
+	// create dialog for user to select category
+	QDialog dlg;
+	QComboBox categories;
+	QStringList cats2add;
+	for (std::set<QString>::const_iterator it = availableCategories.begin(); it != availableCategories.end(); ++it) {
+		cats2add << *it;
+	}
+	categories.addItems(cats2add);
+	QPushButton done("Done");
+	QVBoxLayout layout;
+	layout.addWidget(&categories);
+	layout.addWidget(&done);
+	connect(&done, SIGNAL(clicked()), &dlg, SLOT(close()));
+	dlg.setLayout(&layout);
+	dlg.exec();
+
+	// set the selected category
+	expenses[expId]->set_category_name(categories.currentText());
+
+	// update availabe categories (i.e. remove the one just selected)
+	update_available_categories();
 }
 
 
@@ -156,7 +194,7 @@ void mudget::load(QString openFName) {
 			updateIncome();
 		}
 		else {
-			tempIncome = new mudgetCategory(categoryMap, false);
+			tempIncome = new mudgetCategory(false);
 			if (!tempIncome->load(file2load)) {
 				ERROR("loading temp income failed");
 				display_message("Error loading file - loading temp income failed.");
@@ -185,7 +223,8 @@ void mudget::load(QString openFName) {
 						exp = get_first_available_expense_category();
 					}
 					if (exp) {
-						exp->set_category_name(category_name.c_str(), true);
+						expenseCategories.insert(category_name.c_str());			// always try to add loaded categories in case it is not in saved Categories
+						exp->set_category_name(category_name.c_str());
 						if (!exp->load(file2load)) {
 							ERROR("loading an expense failed");
 							display_message("Error loading file - loading an expense failed.");
@@ -199,7 +238,7 @@ void mudget::load(QString openFName) {
 					}
 				}
 				else {
-					tempExpenses.push_back(new mudgetCategory(right.c_str(), categoryMap, false));
+					tempExpenses.push_back(new mudgetCategory(right.c_str(), false));
 					if (!tempExpenses.back()->load(file2load)) {
 						ERROR("loading a temp expense failed");
 						display_message("Error loading file - loading a temp expense failed.");
@@ -220,6 +259,8 @@ void mudget::load(QString openFName) {
 			setGeometry(x(), y(), 0, 0);
 			INFO("loading was successful");
 			display_message("Loading was successful.");
+			// also update available categories
+			update_available_categories();
 		}
 	}
 }
@@ -270,8 +311,8 @@ void mudget::performWantedCalculation() {
 	double max, min, total = 0;
 	bool maxminInit = false;
 	std::map<QString, double> categoryTotals;
-	for (int c = 0; c < categoryMap.size(); ++c) {
-		categoryTotals[categoryMap[c]] = 0;
+	for (std::set<QString>::const_iterator it = expenseCategories.begin(); it != expenseCategories.end(); ++it) {
+		categoryTotals[*it] = 0;
 	}
 
 	// calculation on this month or multiple?
@@ -290,9 +331,11 @@ void mudget::performWantedCalculation() {
 		}
 		else if (k >= 6) {	// categories
 			k = (k - 6) / 3;
-			if (categoryMap.find(k) != categoryMap.end()) {
+			if (k < expenseCategories.size()) {
 				std::vector<mudgetCategory*> cat;
-				QString catToCalc(categoryMap[k]);
+				auto it = expenseCategories.begin();		// sets are not indexable, so must do this foolishness (TODO: create indexable_set class)
+				std::advance(it, k);
+				QString catToCalc(*it);
 				INFO(catToCalc.toStdString() + " this month");
 				find_matching_expenses(cat, catToCalc, false);
 				double catTotali = categoryTotals[catToCalc];
@@ -409,11 +452,12 @@ void mudget::performWantedCalculation() {
 				default:	// categories
 					// category calculation combo box indices start at index 3
 					// each category can calculate average, max, and total (so 3 options)
-					// so converting index to categoryMap key = (index - 3) / 3
 					k = (ui.calculationComboBox->currentIndex() - 6) / 3;
-					if (categoryMap.find(k) != categoryMap.end()) {
+					if (k < expenseCategories.size()) {
 						std::vector<mudgetCategory*> cat;
-						QString catToCalc(categoryMap[k]);
+						auto it = expenseCategories.begin();		// sets are not indexable, so must do this foolishness (TODO: create indexable_set class)
+						std::advance(it, k);
+						QString catToCalc(*it);
 						find_matching_expenses(cat, catToCalc);
 						double catTotali = categoryTotals[catToCalc];
 						for (auto c : cat) {
@@ -567,7 +611,7 @@ void mudget::save() {
 		file2save.write("\n");
 		for (auto exp : expenses) {
 			// Category: cccc...
-			if (exp->get_category_name().isEmpty()) {
+			if (!exp->get_total()) {
 				continue;
 			}
 			file2save.write(category.c_str());
@@ -665,41 +709,43 @@ void mudget::setCategories() {
 	layout.addWidget(&categoryEdit, 0, 0);
 	layout.addWidget(&doneButton, 1, 0, 1, 1, Qt::AlignHCenter);
 	// populate with current categories
-	QString categories;
-	for (std::map<int, QString>::const_iterator it = categoryMap.begin();
-		it != categoryMap.end(); ++it) {
-		categories += it->second;
-		categories += "\n";
+	QString categoryText;
+	for (std::set<QString>::const_iterator it = expenseCategories.begin();
+		it != expenseCategories.end(); ++it) {
+		categoryText += *it;
+		categoryText += "\n";
 	}
-	categoryEdit.setText(categories);
+	categoryEdit.setText(categoryText);
 	
 	window.setLayout(&layout);
 	window.exec();
 
 	// reset category map
-	categoryMap.clear();
-	categories = categoryEdit.toPlainText();
-	while (!categories.isEmpty()) {
-		int ind = categories.indexOf('\n');
+	expenseCategories.clear();
+	categoryText = categoryEdit.toPlainText();
+	while (!categoryText.isEmpty()) {
+		// isolate top line as "category"
+		int ind = categoryText.indexOf('\n');
 		QString categoryname;
 		if (ind == -1) {
-			categoryname = categories;
+			categoryname = categoryText;
 		}
 		else {
-			categoryname = categories.left(ind);
+			categoryname = categoryText.left(ind);
 		}
 		if (!categoryname.isEmpty()) {
-			categoryMap[categoryMap.size()] = categoryname;
+			expenseCategories.insert(categoryname);
 		}
-		int splitInd = categories.size() - ind - 1;
+		// split categoryText at end of top line and reassign to remaining lines
+		int splitInd = categoryText.size() - ind - 1;
 		if (ind == -1 || splitInd < 0) {
 			break;
 		}
 		else {
-			categories = categories.right(splitInd);
+			categoryText = categoryText.right(splitInd);
 		}
 	}
-	update_categories();
+	update_available_categories();
 	update_category_calculations();
 	skipSlot = true;
 	update_calculation_combo();
@@ -743,7 +789,7 @@ void mudget::updateGoals(bool creating) {
 				return;
 			}
 		}
-		goals.push_back(new Goal(categoryMap));
+		goals.push_back(new Goal(expenseCategories));
 		ui.goalsVerticalLayout->addWidget(goals.back());
 		connect(goals.back(), SIGNAL(broadcast(bool)), this, SLOT(updateGoals(bool)));
 	}
@@ -822,9 +868,8 @@ bool mudget::auto_save_settings() {
 	file2save.write("\n\n");
 	// Categories
 	file2save.write(categories.c_str());
-	for (std::map<int, QString>::const_iterator it = categoryMap.begin();
-		it != categoryMap.end(); ++it) {
-		file2save.write(it->second.toStdString().c_str());
+	for (std::set<QString>::const_iterator it = expenseCategories.begin(); it != expenseCategories.end(); ++it) {
+		file2save.write(it->toStdString().c_str());
 		file2save.write("\n");
 	}
 	file2save.write("\n");
@@ -1009,14 +1054,15 @@ void mudget::create_empty_expenses() {
 									ui.scrollArea9 };
 
 	for (auto scrollarea : scrollareas) {
-		expenses.push_back(new mudgetCategory(categoryMap));
+		expenses.push_back(new mudgetCategory());
 		scrollarea->setWidget(expenses.back());
+		connect(&expenses.back()->addCategory, SIGNAL(pressed()), this, SLOT(addCategoryPressed()));
 	}
 }
 
 
 void mudget::create_income_category() {
-	uiIncome = new mudgetCategory("Income", categoryMap);
+	uiIncome = new mudgetCategory(QString("Income"));
 	ui.scrollArea0->setWidget(uiIncome);
 	connect(uiIncome, SIGNAL(updateExpenses()), this, SLOT(updateIncome()));
 }
@@ -1521,9 +1567,7 @@ bool mudget::load_settings() {
 			if (line == "" || line == calculateMonths) {
 				break;
 			}
-			categoryMap[categoryCount++] = line.c_str();
-			// init categories to calculate
-			// categoryCalculateMap[line.c_str()] = true;
+			expenseCategories.insert(line.c_str());
 		}
 		// Calculate-Months
 		while (line == "" && !file2load.atEnd()) {
@@ -1625,7 +1669,7 @@ bool mudget::load_settings() {
 			if (line == "" || file2load.atEnd()) {
 				break;
 			}
-			goals.push_back(new Goal(categoryMap));
+			goals.push_back(new Goal(expenseCategories));
 			if (!goals.back()->load(line)) {
 				WARN("error loading goal: " + line);
 				QString warnmsg("Warning: Unable to load the following goal: ");
@@ -1641,7 +1685,7 @@ bool mudget::load_settings() {
 		}
 		// add line to create new goal if goals already exist
 		if (ui.createGoalButton->isHidden()) {
-			goals.push_back(new Goal(categoryMap));
+			goals.push_back(new Goal(expenseCategories));
 			ui.goalsVerticalLayout->addWidget(goals.back());
 			connect(goals.back(), SIGNAL(broadcast(bool)), this, SLOT(updateGoals(bool)));
 		}
@@ -1723,6 +1767,13 @@ void mudget::setYear2Dates4Goal(Goal * g) {
 	}
 }
 
+void mudget::update_available_categories() {
+	availableCategories = expenseCategories;
+	for (auto exp : expenses) {
+		availableCategories.erase(exp->get_category_name());
+	}
+}
+
 void mudget::update_calculation_combo() {
 	ui.calculationComboBox->clear();
 	QStringList defs;
@@ -1730,40 +1781,25 @@ void mudget::update_calculation_combo() {
 	defs << "average expenses" << "maximum expenses" << "minimum expenses";
 	ui.calculationComboBox->addItems(defs);
 	QString avg("average "), max("maximum "), min("minimum ");
-	for (std::map<int, QString>::const_iterator it = categoryMap.begin();
-		it != categoryMap.end(); ++it) {
-		ui.calculationComboBox->addItem(avg + it->second);
-		ui.calculationComboBox->addItem(max + it->second);
-		ui.calculationComboBox->addItem(min + it->second);
-	}
-}
-
-void mudget::update_categories() {
-	for (auto exp : expenses) {
-		exp->update_category();
+	for (std::set<QString>::const_iterator it = expenseCategories.begin(); it != expenseCategories.end(); ++it) {
+		ui.calculationComboBox->addItem(avg + *it);
+		ui.calculationComboBox->addItem(max + *it);
+		ui.calculationComboBox->addItem(min + *it);
 	}
 }
 
 
 void mudget::update_category_calculations() {
 	// Add new categories
-	for (std::map<int, QString>::const_iterator it = categoryMap.begin();
-		it != categoryMap.end(); ++it) {
-		if (categoryCalculateMap.find(it->second) == categoryCalculateMap.end()) {
-			categoryCalculateMap[it->second] = true;
+	for (std::set<QString>::const_iterator it = expenseCategories.begin(); it != expenseCategories.end(); ++it) {
+		if (categoryCalculateMap.find(*it) == categoryCalculateMap.end()) {
+			categoryCalculateMap[*it] = true;
 		}
 	}
-	// Remove deleted categories
-	for (std::map<QString, bool>::const_iterator it = categoryCalculateMap.begin();
-		it != categoryCalculateMap.end(); ++it) {
-		bool del = true;
-		for (std::map<int, QString>::const_iterator n = categoryMap.begin();
-			n != categoryMap.end(); ++n) {
-			if (it->first == n->second) {
-				del = false;
-				break;
-			}
-		}
+	// Remove deleted categories (must go in reverse since erasing!!)
+	for (std::map<QString, bool>::const_reverse_iterator it = categoryCalculateMap.rbegin();
+		it != categoryCalculateMap.rend(); ++it) {
+		bool del = expenseCategories.find(it->first) == expenseCategories.end();
 		if (del) {
 			categoryCalculateMap.erase(it->first);
 		}
@@ -1968,8 +2004,8 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 	bool foundValue = category == "everything";
 	QString actualCategory;
 	if (!foundValue) {
-		for (auto it = categoryMap.begin(); it != categoryMap.end(); ++it) {
-			if (it->second == category) {
+		for (std::set<QString>::const_iterator it = expenseCategories.begin(); it != expenseCategories.end(); ++it) {
+			if (*it == category) {
 				foundValue = true;
 				actualCategory = category;
 				break;
@@ -1987,8 +2023,8 @@ void mudget::evaluate_weekly_goal(GoalNeed needidx, int amount, QString category
 		category2select += "'" + actualCategory + "'";
 	}
 	else {
-		for (auto it = categoryMap.begin(); it != categoryMap.end(); ++it) {
-			category2select += "'" + it->second + "', ";
+		for (std::set<QString>::const_iterator it = expenseCategories.begin(); it != expenseCategories.end(); ++it) {
+			category2select += "'" + *it + "', ";
 		}
 		category2select.remove(category2select.size() - 2, 2);
 	}
