@@ -9,7 +9,8 @@ The mest mudgeting app you have ever meared witness to!
 * View generated `.moss` files in your text editor of choice to see monthly expense data
 * All settings are auto-saved when you close app, so you can pick up where you left off
 * Create and set financial goals you want to achieve and track your progress
-* COMING SOON - Earn trophies for achieving your goals with flying colors (namely green!)
+* Earn trophies for achieving your goals with flying colors (namely green!)
+* COMING SOON - Invest tab to track and monitor various investment accounts
 
 ## Running .exe
 The `deploy/` folder has everything necessary to run the application. Successfully tested running app on multiple Windows platforms.
