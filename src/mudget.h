@@ -26,6 +26,8 @@
 #include "mudgetcategory.h"
 #include "goal.h"
 #include "goalbar.h"
+#include "investmenttypes.h"
+#include "investmentwidget.h"
 #include "logger.h"
 
 #define SAVE_LOAD_DIRECTORY "./moneyfiles/"
@@ -34,6 +36,7 @@
 #define DATABASE_FILE_NAME	"safe.db"
 #define DB_TABLE_HISTORY	"LAST3MONTHS"
 #define DB_TABLE_TROPHIES	"TROPHIES"
+#define DB_TABLE_INVESTMENTS "INVESTMENTS"
 
 class mudget : public QMainWindow
 {
@@ -66,6 +69,8 @@ class mudget : public QMainWindow
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > silverTrophies;	// silver trophies won (pic and total)
 	std::pair<std::unique_ptr<QLabel>, std::unique_ptr<QLabel> > bronzeTrophies;	// bronze trophies won (pic and total)
 	std::unique_ptr<QLabel> possibleTrophyCountLabel;		// label that displays total possible trophies
+	// invest tab
+	std::vector<InvestmentWidget*> investments;				// investment accounts user has
 	// database
 	std::unique_ptr<QSqlDatabase> db;						// db connection
 	bool dbAvailable;										// does a db connection exist
@@ -78,11 +83,12 @@ public:
 
 public slots:
 	void addCategoryPressed();								// when "Add Category" pressed to add category to expense box
+	void addInvestmentAccount();							// when "Add Account" pressed to add investment widget
 	void calculateGoalProgress();							// runs every 5 sec to display progress of each goal
 	void load(QString openFName = "");						// loads in a .moss file (i.e. a month's financial data)							** UPDATE **
 	void openDatabaseWindow(int);							// displayes db view
 	void performWantedCalculation();						// performs one of many calculations user has requested								** FIX **
-	void receiveRecord(QString exp, double amount,			// receives newly created record info to insert in db
+	void receiveExpenseRecord(QString exp, double amount,	// receives newly created expense record info to insert in db
 		QString cat, int n, QString t);
 	void save();											// save .moss file
 	void setCalculationSettings();							// sets which months and categories should be used in calculations
@@ -118,14 +124,19 @@ private:
 	void find_matching_expenses(std::vector<mudgetCategory*> & matches,	// finds all expenses under specified category in current month
 		QString catname, bool temp=true);
 	mudgetCategory* get_existing_expense_category(std::string catname);		// returns category box for an already existing category, o/w NULL
+	void initialize();												// wrapper for all initialization functions called in constructor
 	void init_database();											// init db
 	void init_display_case();										// inits display case on Goals tab
 	void init_month_year_maps();									// init maps for month and year
 	void init_progress_frame();										// inits progress frame on Goals tab
 	void insert_trophy(GoalTrophy type, QString desc, QString t,	// inserts trophy record in db
 		bool won, float margin);
+	bool load_investments();										// load investment account info from db
 	bool load_settings();											// load auto-saved settings
+	InvestmentWidget* produce_investment_widget(int id,				// produces an investment widget given an ID...like a factory or something :)
+		QString accountname, double balance=0.0);			
 	std::string remove_newline(std::string & str);					// remove newline character
+	bool save_investments();										// saves investments to database
 	void setYear2Dates4Goal(Goal * g);								// sets ytdNet and ytdTrophies for a Goal
 	void update_available_categories();								// updates availableCategories accordingly (after setting categories, and loading)
 	void update_calculation_combo();								// updates calculation combo to match all categories

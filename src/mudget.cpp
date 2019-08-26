@@ -19,18 +19,7 @@ mudget::mudget(QWidget *parent)
 	if (!QDir(SAVE_LOAD_DIRECTORY).exists()) {
 		QDir().mkdir(SAVE_LOAD_DIRECTORY);
 	}
-	init_month_year_maps();		// must init months AND db before loading settings right now!
-	init_database();
-	load_settings();
-	create_income_category();
-	create_empty_expenses();
-	skipSlot = true;
-	update_calculation_combo();
-	skipSlot = false;
-	tempIncome = 0;
-	clean_up_ui();
-	init_progress_frame();
-	init_display_case();
+	initialize();
 
 	// signal slot connections
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(save()));
@@ -104,6 +93,49 @@ void mudget::addCategoryPressed() {
 }
 
 
+void mudget::addInvestmentAccount() {
+	INFO("user clicked to add an investment account");
+
+	// create list of accounts, which is effectively mapping indices to each account
+	static std::vector<QString> accountMap{ "Certificate of Deposit", "Credit Card", "ETF", "Retirement", "Savings", "Stock Brokerage" };
+
+	// prompt user for desired account
+	QDialog selectAccount(this);
+	selectAccount.setWindowTitle("Select Account...");
+	selectAccount.setStyleSheet(this->styleSheet());
+
+	QComboBox accountCombo;
+	for (QString account : accountMap) {
+		accountCombo.addItem(account);
+	}
+
+	QLabel nameLabel("Enter account name:");
+	QLineEdit accountName;
+
+	QPushButton okBtn("OK");
+	connect(&okBtn, SIGNAL(clicked()), &selectAccount, SLOT(close()));
+
+	QGridLayout layout;
+	layout.addWidget(&accountCombo, 0, 0, 1, 2);
+	layout.addWidget(&nameLabel, 1, 0);
+	layout.addWidget(&accountName, 1, 1);
+	layout.addWidget(&okBtn, 2, 0, 1, 2);
+	selectAccount.setLayout(&layout);
+
+	selectAccount.exec();
+
+	// create corresponding widget
+	InvestmentWidget * iwidget = produce_investment_widget(accountCombo.currentIndex(), accountName.text());
+	investments.push_back(iwidget);
+
+	// update the invest tab layout
+	ui.investLayout->addWidget(ui.addAccountButton, investments.size() % 2, investments.size() / 2, Qt::AlignTop | Qt::AlignHCenter);
+	ui.investLayout->addWidget(iwidget, (investments.size() - 1) % 2, (investments.size() - 1) / 2, Qt::AlignTop | Qt::AlignHCenter);
+
+	INFO("user created " + accountCombo.currentText().toStdString() + " account: " + accountName.text().toStdString());
+}
+
+
 void mudget::calculateGoalProgress() {
 	static int count = 0;
 	if (goals.size() > 1) {
@@ -124,9 +156,17 @@ void mudget::calculateGoalProgress() {
 
 
 void mudget::load(QString openFName) {
-	INFO("month file loaded");
+	INFO("month file loaded...");
 	bool fnameProvided = !openFName.isEmpty();
 	if (!fnameProvided) {
+		INFO("via changing month/year combo box");
+		// clear income and all expense boxes
+		if (uiIncome) {
+			uiIncome->reset();
+		}
+		for (auto exp : expenses) {
+			exp->reset(true);
+		}
 		// try to find file corresponding to selected month and year
 		std::string monthStr = std::to_string(ui.monthComboBox->currentIndex() + 1);
 		if (ui.monthComboBox->currentIndex() < 9) {
@@ -153,6 +193,7 @@ void mudget::load(QString openFName) {
 		delete_all();
 	}
 	else {
+		INFO("with filename provided");
 		delete_temp();
 	}
 
@@ -258,11 +299,12 @@ void mudget::load(QString openFName) {
 			ui.yearLineEdit->setText(yearMap[ui.yearComboBox->currentIndex()]);
 			setGeometry(x(), y(), 0, 0);
 			INFO("loading was successful");
-			display_message("Loading was successful.");
 			// also update available categories
 			update_available_categories();
+			display_message("Loading was successful.");
 		}
 	}
+
 }
 
 
@@ -523,7 +565,7 @@ void mudget::performWantedCalculation() {
 	delete_temp();
 }
 
-void mudget::receiveRecord(QString exp, double amount, QString cat, int n, QString t) {
+void mudget::receiveExpenseRecord(QString exp, double amount, QString cat, int n, QString t) {
 	QString m(ui.monthComboBox->currentText());	// get current month
 	DEBUG("received record: " + exp.toStdString() + " " + std::to_string(amount) 
 		+ " " + cat.toStdString() + " " + m.toStdString() + " " + t.toStdString());
@@ -626,11 +668,13 @@ void mudget::save() {
 		}
 		file2save.close();
 		INFO("saving was successful");
-		display_message("Saving was successful.");
 		// add to months to calculate map
 		if (monthsCalculateMap.find((monthStr + yearStr).c_str()) == monthsCalculateMap.end()) {
 			monthsCalculateMap[(monthStr + yearStr).c_str()] = true;
 		}
+		// save investments to db
+		save_investments();
+		display_message("Saving was successful.");
 	}
 }
 
@@ -1057,6 +1101,9 @@ void mudget::create_empty_expenses() {
 		expenses.push_back(new mudgetCategory());
 		scrollarea->setWidget(expenses.back());
 		connect(&expenses.back()->addCategory, SIGNAL(pressed()), this, SLOT(addCategoryPressed()));
+		connect(expenses.back(), SIGNAL(updateExpenses()), this, SLOT(updateExpenses()));
+		connect(expenses.back(), SIGNAL(sendRecord(QString, double, QString, int, QString)),
+			this, SLOT(receiveExpenseRecord(QString, double, QString, int, QString)));
 	}
 }
 
@@ -1135,7 +1182,9 @@ bool mudget::delete_old_db_records() {
 
 void mudget::delete_temp() {
 	for (auto exp : tempExpenses) {
-		delete exp;
+		if (exp) {
+			delete exp;
+		}
 	}
 	tempExpenses.clear();
 	if (tempIncome) {
@@ -1172,6 +1221,24 @@ mudgetCategory* mudget::get_existing_expense_category(std::string catname) {
 	}
 
 	return NULL;
+}
+
+void mudget::initialize() {
+	// ORDER MATTERS IN THIS FUNCTION!! (at least for parts)
+	// todo: detail exactly where/why order matters
+	tempIncome = 0;
+	init_month_year_maps();		// must init months AND db before loading settings right now!
+	init_database();
+	load_settings();
+	create_income_category();
+	create_empty_expenses();
+	skipSlot = true;
+	update_calculation_combo();
+	skipSlot = false;
+	clean_up_ui();
+	init_progress_frame();
+	init_display_case();
+	load_investments();		// needs to occur after loading settings and db setup
 }
 
 
@@ -1220,7 +1287,7 @@ void mudget::init_database() {
 		return;
 	}
 
-	// create table if it does not exist
+	// create expense history table if it does not exist
 	if (db->record(DB_TABLE_HISTORY).isEmpty()) {
 		QSqlQuery query;
 		query.exec("CREATE TABLE LAST3MONTHS (\
@@ -1244,7 +1311,7 @@ void mudget::init_database() {
 	}
 
 
-	// create table if it does not exist
+	// create trophies table if it does not exist
 	if (db->record(DB_TABLE_TROPHIES).isEmpty()) {
 		QSqlQuery query;
 		query.exec("CREATE TABLE TROPHIES (\
@@ -1264,14 +1331,29 @@ void mudget::init_database() {
 	}
 	else {
 		INFO("db table TROPHIES already exists");
-		/*
-		QString addMargin("ALTER TABLE TROPHIES ADD MARGIN MONEY;");
+	}
+
+
+	// create investments table if it does not exist
+	if (db->record(DB_TABLE_INVESTMENTS).isEmpty()) {
 		QSqlQuery query;
-		query.exec(addMargin);
-		if (query.isActive()) {
-			DEBUG("successfully created margin column in trophies table!!!");
+		query.exec("CREATE TABLE INVESTMENTS (\
+					ID			INTEGER	PRIMARY KEY		AUTOINCREMENT, \
+					TYPE		INT		NOT NULL, \
+					NAME		TEXT	NOT NULL, \
+					BALANCE		MONEY	NOT NULL, \
+					DATA		TEXT			, \
+					ACTIVE		BOOL	NOT NULL, \
+					UNIQUE(TYPE, NAME, DATA) \
+					);");
+		if (!query.isActive()) {
+			ERROR("unable to create db table INVESTMENTS due to: " + query.lastError().text().toStdString());
+			return;
 		}
-		*/
+		INFO("created db table INVESTMENTS");
+	}
+	else {
+		INFO("db table INVESTMENTS already exists");
 	}
 
 	dbAvailable = true;
@@ -1498,6 +1580,48 @@ void mudget::insert_trophy(GoalTrophy type, QString desc, QString t, bool won, f
 }
 
 
+bool mudget::load_investments() {
+	INFO("loading investments");
+
+	// clear investments as a failsafe
+	for (auto inv : investments) {
+		delete inv;
+	}
+	investments.clear();
+
+	// iterate through INVESTMENTS table records with ACTIVE = 1
+	if (dbAvailable) {
+		QSqlQuery query;
+		QString apo("'");
+		QString selectAll("SELECT TYPE, NAME, BALANCE, DATA FROM INVESTMENTS WHERE ACTIVE = 1;");
+		query.exec(selectAll);
+		if (query.isActive() && query.isSelect()) {
+			while (query.next()) {
+				// create investment widget as if "Add (Account)" button was pressed from record data
+				INFO("loading investment: " + query.value(0).toString().toStdString() + ", " + query.value(1).toString().toStdString() + ", " + query.value(2).toString().toStdString());
+				InvestmentWidget * iwidget = produce_investment_widget(query.value(0).toInt(), query.value(1).toString(), query.value(2).toDouble());
+				investments.push_back(iwidget);
+
+				// update the invest tab layout
+				ui.investLayout->addWidget(ui.addAccountButton, investments.size() % 2, investments.size() / 2, Qt::AlignTop | Qt::AlignHCenter);
+				ui.investLayout->addWidget(iwidget, (investments.size() - 1) % 2, (investments.size() - 1) / 2, Qt::AlignTop | Qt::AlignHCenter);
+			}
+		}
+		else {
+			WARN("failed to select investment records due to: " + query.lastError().text().toStdString());
+			return false;
+		}
+	}
+	else {
+		ERROR("database not available");
+		return false;
+	}
+
+	INFO("SUCCESS");
+	return true;
+}
+
+
 bool mudget::load_settings() {
 	INFO("loading settings");
 	// try to find settings file
@@ -1697,6 +1821,28 @@ bool mudget::load_settings() {
 }
 
 
+InvestmentWidget* mudget::produce_investment_widget(int id, QString accountname, double balance) {
+	switch (id) {
+	case InvestmentType_CD:
+		return new InvestmentWidget(new CertificateOfDeposit(accountname, balance));
+	case InvestmentType_CreditCard:
+		return new InvestmentWidget(new CreditCard(accountname, balance));
+	case InvestmentType_ETF:
+		return new InvestmentWidget(new ETF(accountname, balance));
+	case InvestmentType_Retirement:
+		return new InvestmentWidget(new RetirementAccount(accountname, balance));
+	case InvestmentType_Savings:
+		return new InvestmentWidget(new SavingsAccount(accountname, balance));
+	case InvestmentType_StockBrokerage:
+		return new InvestmentWidget(new StockBrokerageAccount(accountname, balance));
+	default:
+		ERROR("Tried to create an investment widget with invalid account ID");
+		break;
+	}
+	return NULL;
+}
+
+
 std::string mudget::remove_newline(std::string & str) {
 	if (str.length() && str.back() == '\n') {
 		return str.substr(0, str.length() - 1);
@@ -1704,6 +1850,101 @@ std::string mudget::remove_newline(std::string & str) {
 	else {
 		return str;
 	}
+}
+
+
+bool mudget::save_investments() {
+	INFO("saving investments");
+
+	if (!dbAvailable) {
+		WARN("unable to save investments due to no available database!");
+		return false;
+	}
+
+	// init vector for primary keys of 'active' accounts
+	std::vector<int> activeAccountKeys;
+
+	// iterate through investments
+	for (InvestmentWidget * iwidget : investments) {
+
+		// snag type (enum/int), name (QString), balance (double), & data (QString)
+		// convert them to QString's here for simpler integration into SQL query strings below
+		QString type = std::to_string(iwidget->getAccount()->getType()).c_str();
+		QString name = iwidget->getAccount()->getName();
+		QString balance = std::to_string(iwidget->getAccount()->getBalance()).c_str();
+		
+		INFO("saving investment: " + type.toStdString() + ", " + name.toStdString() + ", " + balance.toStdString());
+
+		// check for PRIMARY_KEY of record with same TYPE, NAME, (& DATA)
+		QSqlQuery query;
+		QString selectKey("SELECT ID FROM INVESTMENTS WHERE TYPE = ");
+		selectKey += type;
+		selectKey += " AND NAME LIKE '" + name + "' LIMIT 1;";		// in reality, we should not need to limit to 1...
+		query.exec(selectKey);
+
+		if (query.isActive() && query.isSelect()) {
+			if (query.next()) {
+				// add to vector of primary keys
+				QVariant pkey = query.value(0);
+				activeAccountKeys.push_back(pkey.toInt());
+				// if found -> do an UPDATE w/ ACTIVE = 1
+				query.finish();
+				QString updateAccount("UPDATE INVESTMENTS SET ");
+				updateAccount += "BALANCE = " + balance + ",";
+				updateAccount += "ACTIVE = 1";
+				updateAccount += " WHERE ID = " + pkey.toString() + ";";
+				query.exec(updateAccount);
+				if (!query.isActive()) {
+					ERROR("unable to update investment: '" + name.toStdString() + "' due to: " + query.lastError().text().toStdString());
+				}
+			}
+			else {
+				query.finish();
+				// else -> do an INSERT w/ ACTIVE = 1
+				QString insertAccount("INSERT INTO INVESTMENTS (TYPE, NAME, BALANCE, ACTIVE) ");
+				insertAccount += "VALUES (" + type + ", '" + name + "', " + balance + ", 1);";
+				query.exec(insertAccount);
+
+				if (!query.isActive()) {
+					ERROR("unable to insert investment: '" + name.toStdString() + "' due to: " + query.lastError().text().toStdString());
+				}
+				else {
+					query.finish();
+					// get its primary key and add to vector of primary keys
+					query.exec(selectKey);
+					if (query.isActive() && query.isSelect() && query.next()) {
+						activeAccountKeys.push_back(query.value(0).toInt());
+					}
+					else {
+						ERROR("unable to get primary key of inserted investment: '" + name.toStdString() + "' due to: " + query.lastError().text().toStdString());
+					}
+				}
+			}
+		}
+		else {
+			ERROR("unable to select primary key of investment: '" + name.toStdString() + "' due to: " + query.lastError().text().toStdString());
+		}
+	}
+
+	// update db such that if PRIMARY_KEY of current record is not in vector of primary keys for 'active' accounts -> ACTIVE = 0
+	QSqlQuery query;
+	QString updateAccounts("UPDATE INVESTMENTS SET ACTIVE = 0 WHERE ID NOT IN (");
+	for (int idx = 0; idx < activeAccountKeys.size(); ++idx) {
+		int acctID = activeAccountKeys[idx];
+		updateAccounts += std::to_string(acctID).c_str();
+		if (idx < activeAccountKeys.size() - 1) {
+			updateAccounts += ",";
+		}
+	}
+	updateAccounts += ");";
+	query.exec(updateAccounts);
+	if (!query.isActive()) {
+		WARN("unable to udpate inactive accounts in INVESTMENTS table");
+	}
+
+	INFO("SUCCESS");
+
+	return true;
 }
 
 void mudget::setYear2Dates4Goal(Goal * g) {

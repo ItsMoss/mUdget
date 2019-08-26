@@ -6,11 +6,12 @@ mudgetCategory::mudgetCategory(bool showIt) : loading(false), total(0.) {
 	mainLayout.addWidget(&addCategory, 0, 0, Qt::AlignTop);
 	mainLayout.addWidget(&category, 1, 0, Qt::AlignTop);
 	category.hide();
+	addButton.setText("Add");
+	addButton.setStyleSheet("QPushButton{background-color: rgb(25, 25, 25);border-color: rgb(0, 255, 0);border-style: solid;border-width: 3px;color: rgb(255, 255, 255);border-radius: 7px;padding: 3px;font: bold 7pt white;} QPushButton::hover{background-color: rgb(0, 0, 0);color: rgb(255, 255, 255);border-width: 3px;border-color: rgb(255, 255, 255);font: bold 7pt white;}");
 	itemLayout.addWidget(&addButton, 0, 0, 1, 2, Qt::AlignHCenter);
 	connect(&addButton, SIGNAL(clicked()), this, SLOT(addLineItem()));
 	mainLayout.addLayout(&itemLayout, 2, 0);
 	setLayout(&mainLayout);
-	setStyleSheet("border: 3px solid white");
 	setVisible(showIt);
 	setSizePolicy(QSizePolicy::Minimum , QSizePolicy::Minimum);
 }
@@ -19,12 +20,13 @@ mudgetCategory::mudgetCategory(QString cat, bool showIt) : loading(false), total
 	addCategory.setText("Add Category");
 	category.setText(cat);
 	category.setReadOnly(true);
+	addButton.setText("Add");
+	addButton.setStyleSheet("QPushButton{background-color: rgb(25, 25, 25);border-color: rgb(0, 255, 0);border-style: solid;border-width: 3px;color: rgb(255, 255, 255);border-radius: 7px;padding: 3px;font: bold 7pt white;} QPushButton::hover{background-color: rgb(0, 0, 0);color: rgb(255, 255, 255);border-width: 3px;border-color: rgb(255, 255, 255);font: bold 7pt white;}");
 	mainLayout.addWidget(&category, 0, 0, Qt::AlignTop);
 	itemLayout.addWidget(&addButton, 0, 0, 1, 2, Qt::AlignHCenter);
 	connect(&addButton, SIGNAL(clicked()), this, SLOT(addLineItem()));
 	mainLayout.addLayout(&itemLayout, 2, 0);
 	setLayout(&mainLayout);
-	setStyleSheet("border: 3px solid white");
 	setVisible(showIt);
 }
 
@@ -138,8 +140,17 @@ bool mudgetCategory::load(QFile & f) {
 	return true;
 }
 
-void mudgetCategory::reset() {
+void mudgetCategory::reset(bool showAddCat) {
+	if (showAddCat) {
+		category.hide();
+		addCategory.show();
+	}
+	for (auto expense : lineItems) {
+		delete expense.first;
+		delete expense.second;
+	}
 	lineItems.clear();
+	total = 0;
 }
 
 std::string mudgetCategory::save() {

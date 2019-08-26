@@ -1,10 +1,10 @@
 QMainWindow{
-background: rgb(0, 0, 0);
+background: rgb(25, 25, 25);
 border-radius: 5px;
 }
 
 QStatusBar{
-background-color:rgb(0, 0, 0);
+background-color:rgb(25, 25, 25);
 }
 
 QMenuBar{
@@ -20,7 +20,7 @@ color: rgb(255, 255, 255);
 }
 
 QMenuBar::item::selected{
-background-color:rgb(50, 50, 50);
+background-color:rgb(0, 0, 0);
 padding: 5px;
 color: rgb(255, 255, 255);
 }
@@ -32,23 +32,27 @@ color: rgb(255, 255, 255);
 }
 
 QMenu::item:selected{
-background-color:rgb(50, 50, 50);
+background-color:rgb(0, 0, 0);
 color: rgb(255, 255, 255);
 }
 
 QWidget#mainTab{
-background-color:rgb(0, 0, 0);
+background-color:rgb(25, 25, 25);
 }
 
 QWidget#goalsTab{
-background-color:rgb(0, 0, 0);
+background-color:rgb(25, 25, 25);
+}
+
+QWidget#investTab{
+background-color:rgb(25, 25, 25);
 }
 
 QTabBar::tab{
 border: 3px solid white;
 border-radius: 2px;
-background-color: rgb(0, 0, 0);
-color: rgb(255, 255, 255);
+background-color: rgb(25, 25, 25);
+color: rgb(25, 255, 25);
 padding: 2px;
 min-width: 8ex;
 }
@@ -56,8 +60,8 @@ min-width: 8ex;
 QTabBar::tab::hovered{
 border: 3px solid white;
 border-radius: 2px;
-background-color: rgb(0, 0, 0);
-color: rgb(255, 255, 255);
+background-color: rgb(25, 25, 25);
+color: rgb(25, 255, 25);
 padding: 1px;
 font: bold;
 min-width: 8ex;
@@ -65,28 +69,28 @@ min-width: 8ex;
 
 QTabBar::tab::selected{
 border: 3px solid white;
-border-bottom-color: rgb(0,0,0);
+border-bottom-color: rgb(25, 25, 25);
 border-radius: 2px;
-background-color: rgb(0, 0, 0);
+background-color: rgb(25, 25, 25);
 color: rgb(0, 255, 0);
 padding: 3px;
 min-width: 8ex;
 }
 
 QFrame#mossHub{
-border: 3px solid rgb(100, 100, 100);
+border: 3px solid rgb(200, 200, 25);
 }
 
 QFrame#goalsFrame{
-border: 3px solid rgb(100, 100, 100);
+border: 3px solid rgb(200, 25, 200);
 }
 
 QFrame#progressFrame{
-border: 3px solid rgb(100, 100, 100);
+border: 3px solid rgb(200, 25, 200);
 }
 
 QFrame#displayCaseFrame{
-border: 3px solid rgb(100, 100, 100);
+border: 3px solid rgb(200, 25, 200);
 }
 
 QLabel{
@@ -94,22 +98,23 @@ font: bold;
 color: rgb(255, 255, 255);
 }
 
-QPushButton{
-background-color: rgb(0, 0, 0);
-border-color: rgb(255, 255, 255);
-border-style: solid;
+QPushButton::hover{
+background-color: rgb(25, 25, 25);
+border-color: rgb(0, 255, 0);
 border-width: 3px;
 color: rgb(255, 255, 255);
-border-radius: 7px;
-padding: 3px;
+font: bold 7pt;
 }
 
-QPushButton::hover{
+QPushButton{
 background-color: rgb(0, 0, 0);
-color: rgb(0, 255, 0);
+color: rgb(255, 255, 255);
 border-width: 3px;
-border-color: rgb(70, 70, 70);
+border-color: rgb(255, 255, 255);
 font: bold 7pt;
+border-style: solid;
+border-radius: 7px;
+padding: 3px;
 }
 
 QPushButton::pressed{

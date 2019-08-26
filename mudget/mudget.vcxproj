@@ -119,6 +119,9 @@
     <ClCompile Include="..\src\expenseitem.cpp" />
     <ClCompile Include="..\src\goal.cpp" />
     <ClCompile Include="..\src\goalbar.cpp" />
+    <ClCompile Include="..\src\investment.cpp" />
+    <ClCompile Include="..\src\investmenttypes.cpp" />
+    <ClCompile Include="..\src\investmentwidget.cpp" />
     <ClCompile Include="..\src\logger.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\melpers.cpp" />
@@ -128,6 +131,9 @@
   <ItemGroup>
     <ClInclude Include="..\src\expenseitem.h" />
     <ClInclude Include="..\src\goalbar.h" />
+    <ClInclude Include="..\src\investment.h" />
+    <ClInclude Include="..\src\investmenttypes.h" />
+    <QtMoc Include="..\src\investmentwidget.h" />
     <ClInclude Include="..\src\logger.h" />
     <ClInclude Include="..\src\melpers.h" />
     <ClInclude Include="resource.h" />

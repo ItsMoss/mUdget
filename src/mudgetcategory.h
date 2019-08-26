@@ -39,7 +39,7 @@ class mudgetCategory : public QFrame {
 		void set_category_name(QString name);
 		double get_total() const;
 		bool load(QFile & f);
-		void reset();
+		void reset(bool showAddCat=false);
 		std::string save();
 	
 	public slots:

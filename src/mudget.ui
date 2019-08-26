@@ -478,31 +478,6 @@
            </property>
           </widget>
          </item>
-         <item row="6" column="0" alignment="Qt::AlignHCenter">
-          <widget class="QPushButton" name="pushButton">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>16777215</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>Calculate Now</string>
-           </property>
-          </widget>
-         </item>
          <item row="3" column="0" colspan="3">
           <widget class="Line" name="line">
            <property name="orientation">
@@ -651,6 +626,31 @@
            </item>
           </widget>
          </item>
+         <item row="6" column="0" alignment="Qt::AlignHCenter">
+          <widget class="QPushButton" name="pushButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>Calculate Now</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
       </layout>
@@ -660,7 +660,9 @@
      <widget class="QTabWidget" name="mainTabWidget">
       <property name="font">
        <font>
-        <family>Lucida Handwriting</family>
+        <family>Arial</family>
+        <weight>75</weight>
+        <bold>true</bold>
        </font>
       </property>
       <property name="autoFillBackground">
@@ -673,6 +675,13 @@
        <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
+       <property name="font">
+        <font>
+         <family>Arial</family>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="styleSheet">
         <string notr="true"/>
        </property>
@@ -691,7 +700,7 @@
              <x>0</x>
              <y>0</y>
              <width>151</width>
-             <height>75</height>
+             <height>76</height>
             </rect>
            </property>
           </widget>
@@ -708,7 +717,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>75</height>
+             <height>76</height>
             </rect>
            </property>
           </widget>
@@ -725,7 +734,7 @@
              <x>0</x>
              <y>0</y>
              <width>151</width>
-             <height>75</height>
+             <height>76</height>
             </rect>
            </property>
           </widget>
@@ -742,7 +751,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>75</height>
+             <height>76</height>
             </rect>
            </property>
           </widget>
@@ -759,7 +768,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>75</height>
+             <height>76</height>
             </rect>
            </property>
           </widget>
@@ -779,7 +788,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>76</height>
+             <height>77</height>
             </rect>
            </property>
           </widget>
@@ -796,7 +805,7 @@
              <x>0</x>
              <y>0</y>
              <width>151</width>
-             <height>76</height>
+             <height>77</height>
             </rect>
            </property>
           </widget>
@@ -813,7 +822,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>76</height>
+             <height>77</height>
             </rect>
            </property>
           </widget>
@@ -830,7 +839,7 @@
              <x>0</x>
              <y>0</y>
              <width>151</width>
-             <height>76</height>
+             <height>77</height>
             </rect>
            </property>
           </widget>
@@ -847,7 +856,7 @@
              <x>0</x>
              <y>0</y>
              <width>152</width>
-             <height>76</height>
+             <height>77</height>
             </rect>
            </property>
           </widget>
@@ -934,6 +943,38 @@
        <attribute name="title">
         <string>Invest</string>
        </attribute>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="0" column="0">
+         <widget class="QScrollArea" name="investScrollArea">
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollAreaWidgetContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>98</width>
+             <height>29</height>
+            </rect>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_7">
+            <item row="0" column="0">
+             <layout class="QGridLayout" name="investLayout">
+              <item row="0" column="0" alignment="Qt::AlignHCenter">
+               <widget class="QPushButton" name="addAccountButton">
+                <property name="text">
+                 <string>Add Account</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
       </widget>
      </widget>
     </item>
@@ -1030,8 +1071,8 @@
    <slot>performWantedCalculation()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>213</x>
-     <y>353</y>
+     <x>227</x>
+     <y>222</y>
     </hint>
     <hint type="destinationlabel">
      <x>182</x>
@@ -1046,12 +1087,28 @@
    <slot>updateGoals(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>187</x>
-     <y>226</y>
+     <x>262</x>
+     <y>349</y>
     </hint>
     <hint type="destinationlabel">
      <x>175</x>
      <y>405</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>addAccountButton</sender>
+   <signal>clicked()</signal>
+   <receiver>mudgetClass</receiver>
+   <slot>addInvestmentAccount()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>408</x>
+     <y>340</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>438</x>
+     <y>432</y>
     </hint>
    </hints>
   </connection>
@@ -1062,5 +1119,6 @@
   <slot>updateCurrentMonthYear(int)</slot>
   <slot>performWantedCalculation()</slot>
   <slot>updateGoals(bool)</slot>
+  <slot>addInvestmentAccount()</slot>
  </slots>
 </ui>
